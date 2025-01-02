@@ -50,7 +50,7 @@ class RoboflowClient:
         result = self.model.predict(
             str(image_path),
             confidence=self.config.confidence_threshold,
-            overlap=self.config.overlap_threshold
+            # overlap=self.config.overlap_threshold # idk whether to leave this or not
         ).json()
 
         self.logger.info(f"Detected {len(result['predictions'])} holds on the image.")
@@ -68,7 +68,7 @@ class RoboflowClient:
         self.logger.info(f"Visualizing detected holds on the image: {image_path}")
 
         image = cv2.imread(str(image_path))
-        detections = sv.Detections.from_roboflow(result) # TODO: if wont work try: from_inference(result) doc
+        detections = sv.Detections.from_inference(result) # yep the from_inference method works
 
         # Annotators for labels and masks
         label_annotator = sv.LabelAnnotator()
@@ -76,7 +76,8 @@ class RoboflowClient:
 
         # Overlaping labels and masks on the image
         annotated_image = mask_annotator.annotate(scene=image, detections=detections)
-        labels = ["hold"] * len(result["predictions"])
+        # labels = ["hold"] * len(result["predictions"])
+        labels = [f"hold {i+1}" for i in range(len(result["predictions"]))] # numerated version of the labels
         annotated_image = label_annotator.annotate(
             scene=annotated_image,
             labels=labels,

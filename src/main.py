@@ -16,10 +16,10 @@ def main():
 
         # Roboflow client initialization
         roboflow_config = ProjectConfig.get_roboflow_config()
-        logger.info("Roboflow client initialized successfully.")
 
         # Client initialization
-        client = RoboflowClient(roboflow_config)
+        client = RoboflowClient(roboflow_config) # prolly gives that weird info about initialization
+        logger.info("Roboflow client initialized successfully.")
 
         # Image path
         image_path = ProjectConfig.PROJECT_ROOT / "data" / "images" / "test_wall.jpg"
@@ -29,7 +29,8 @@ def main():
 
         # Detect holds
         result = client.detect_holds(image_path)
-        logger.info(f"Detected holds: {result}")
+        logger.info(f"Detected holds completed.")
+        # logger.info(f"Detected holds: {len(result['predictions'])}")
 
         # Visualize detections
         output_path = ProjectConfig.EXPORTS_DIR / "detections.jpg"
