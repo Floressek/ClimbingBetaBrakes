@@ -1,0 +1,69 @@
+# System plików
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.env
+*.venv
+ENV/
+env/
+venv/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Pytest
+.cache/
+.tox/
+.coverage
+*.cover
+coverage.xml
+*.egg
+*.egg-info/
+dist/
+build/
+*.manifest
+*.spec
+
+# IDE/Edytory
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# Logs i dane
+*.log
+*.sqlite3
+*.db
+*.sql
+
+# Wirtualne środowiska
+*.env
+*.venv
+
+# Konfiguracje narzędzi
+*.ini
+*.toml
+
+# Specyficzne dla systemów kontroli wersji
+!.gitignore
+.git/
+
+# Pliki binarne/kompilowane
+*.exe
+*.dll
+*.so
+*.dylib
+*.class
+*.jar
+*.war
+*.swp
+*.tmp
+*.bak
+*.old
+
+# Specyficzne dla projektu
+examples/images/
+examples/routes/
