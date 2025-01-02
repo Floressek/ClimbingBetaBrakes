@@ -1,6 +1,7 @@
 import logging
 from logging.handlers import RotatingFileHandler
 from typing import Optional
+import os
 
 
 class CustomFormatter(logging.Formatter):
@@ -30,7 +31,7 @@ class CustomFormatter(logging.Formatter):
         message = self.green + record.message + self.reset
 
         # Złóż komunikat
-        formatted = f"[{timestamp}] - {level} - {name} - {location} - {message}"
+        formatted = f"[{timestamp}] - [{level}] - {name} - {location} - {message}"
 
         return formatted
 
@@ -47,7 +48,20 @@ class CustomFormatter(logging.Formatter):
 
 
 def setup_logger(name: str, log_file: str, level: int = logging.INFO) -> logging.Logger:
-    """Return a logger with the specified name and level."""
+    """
+    Return a logger with the specified name and level.
+
+    Args:
+        name (str): Name of the logger.
+        log_file (str): Path to the log file.
+        level (int): Logging level (default: logging.INFO).
+
+    Returns:
+        logging.Logger: Configured logger.
+    """
+
+    os.makedirs(os.path.dirname(log_file), exist_ok=True)
+
     # Format dla pliku (bez kolorów)
     file_formatter = logging.Formatter(
         '[%(asctime)s] - %(levelname)s - %(name)s - [%(filename)s:%(lineno)d] - %(message)s'

@@ -85,6 +85,28 @@ class ProjectConfig:
         cls.logger.info("Project configuration initialized successfully.")
 
     @classmethod
+    def get_roboflow_config(cls) -> RoboflowConfig: # TODO find where the api spews: loading Roboflow workspace...
+        """
+        Get the Roboflow configuration from the environment variables.
+        Returns:
+            RoboflowConfig: Configuration for the Roboflow API.
+        Raises:
+            ValueError: If the configuration is invalid.
+        """
+        api_key = os.environ.get("ROBOFLOW_API_KEY")
+        if not api_key:
+            cls.logger.error("ROBOFLOW_API_KEY environment variable is not set.")
+            raise ValueError("ROBOFLOW_API_KEY is not set or invalid.")
+
+        return RoboflowConfig(
+            api_key=os.environ["ROBOFLOW_API_KEY"],
+            project_id=os.environ.get("ROBOFLOW_PROJECT_ID", "hold-detection-rnvkl"),
+            model_version_id=int(os.environ.get("ROBOFLOW_MODEL_VERSION_ID", 2)),
+            confidence_threshold=float(os.environ.get("ROBOFLOW_CONFIDENCE_THRESHOLD", 0.4)),
+            overlap_threshold=float(os.environ.get("ROBOFLOW_OVERLAP_THRESHOLD", 0.3)),
+        )
+
+    @classmethod
     def get_log_file(cls, name) -> str:
         """
         Generate a log file path.
@@ -116,8 +138,8 @@ class ProjectConfig:
         Raises:
             ValueError: If the environment is invalid.
         """
-        requried_env_vars = ["ROBOFLOW_API_KEY"]
-        missing_vars = [var for var in requried_env_vars if var not in os.environ]
+        required_env_vars = ["ROBOFLOW_API_KEY"]
+        missing_vars = [var for var in required_env_vars if var not in os.environ]
 
         if missing_vars:
             cls.logger.error(f"Missing environment variables: {missing_vars}")
