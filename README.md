@@ -144,7 +144,8 @@ The project follows a modular architecture for maintainability and testability:
 
 For development, install additional dependencies:
 ```bash
-pip install -r requirements/dev.txt
+pip install poetry
+poetry update
 ```
 
 Run tests:
