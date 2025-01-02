@@ -4,6 +4,82 @@
 Climbing Route Creator is a mobile application that helps climbers create, share, and discover climbing routes. Using advanced computer vision technology (Roboflow API), the app automatically detects holds on climbing wall photos and allows users to create routes by selecting holds and adding descriptions. Think of it as a collaborative platform for climbers to share their favorite routes and discover new challenges.
 
 ## Key Features
+```
+climbing_route_creator/              # Główny katalog projektu
+│
+├── src/                            # Kod źródłowy aplikacji
+│   ├── __init__.py
+│   ├── main.py                    # Punkt startowy aplikacji
+│   │
+│   ├── api/                       # Moduł komunikacji z Roboflow
+│   │   ├── __init__.py
+│   │   ├── models.py             # Klasy reprezentujące dane z API (HoldPrediction, Point)
+│   │   ├── roboflow_client.py    # Klient API Roboflow
+│   │   └── exceptions.py         # Własne wyjątki dla API
+│   │
+│   ├── core/                      # Logika biznesowa aplikacji
+│   │   ├── __init__.py
+│   │   ├── hold.py              # Reprezentacja chwytu w aplikacji
+│   │   ├── route.py             # Klasa reprezentująca trasę wspinaczkową
+│   │   └── route_manager.py     # Zarządzanie trasami (tworzenie, edycja)
+│   │
+│   ├── gui/                       # Interfejs użytkownika
+│   │   ├── __init__.py
+│   │   ├── main_window.py       # Główne okno aplikacji
+│   │   ├── resources/           # Zasoby GUI (ikony, style)
+│   │   │   ├── icons/
+│   │   │   └── styles/
+│   │   └── widgets/             # Komponenty GUI
+│   │       ├── __init__.py
+│   │       ├── hold_viewer.py   # Widget do wyświetlania chwytów
+│   │       ├── route_editor.py  # Edytor trasy
+│   │       └── image_preview.py # Podgląd zdjęcia z zaznaczonymi chwytami
+│   │
+│   ├── utils/                     # Narzędzia pomocnicze
+│   │   ├── __init__.py
+│   │   ├── config.py           # Konfiguracja aplikacji (klucze API, ustawienia)
+│   │   ├── logger.py           # Konfiguracja logowania
+│   │   └── image_utils.py      # Narzędzia do przetwarzania obrazów
+│   │
+│   └── storage/                   # Warstwa przechowywania danych
+│       ├── __init__.py
+│       ├── models/              # Modele danych do przechowywania
+│       │   ├── __init__.py
+│       │   └── route_model.py  # Model trasy do zapisu
+│       └── repositories/        # Implementacje zapisu danych
+│           ├── __init__.py
+│           └── route_repository.py
+│
+├── tests/                         # Testy
+│   ├── __init__.py
+│   ├── conftest.py              # Konfiguracja testów
+│   ├── test_api/               # Testy modułu API
+│   │   ├── __init__.py
+│   │   ├── test_roboflow_client.py
+│   │   └── test_models.py
+│   ├── test_core/             # Testy logiki biznesowej
+│   └── test_gui/              # Testy interfejsu
+│
+├── examples/                      # Przykładowe zdjęcia i trasy
+│   ├── images/
+│   └── routes/
+│
+├── docs/                          # Dokumentacja
+│   ├── api.md                   # Dokumentacja API
+│   ├── user_guide.md           # Przewodnik użytkownika
+│   └── development.md          # Instrukcje dla developerów
+│
+├── requirements/                  # Zależności projektu
+│   ├── base.txt                # Podstawowe zależności
+│   ├── dev.txt                 # Zależności developerskie
+│   └── test.txt               # Zależności testowe
+│
+├── setup.py                      # Skrypt instalacyjny
+├── pyproject.toml               # Konfiguracja narzędzi Pythona
+├── README.md                    # Główna dokumentacja projektu
+└── .gitignore
+```
+
 The application allows users to:
 - Automatically detect climbing holds in photos using computer vision
 - Create routes by selecting holds and adding descriptions
