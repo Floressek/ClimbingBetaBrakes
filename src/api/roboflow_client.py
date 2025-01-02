@@ -1,8 +1,10 @@
+from dataclasses import asdict
 from pathlib import Path
 from typing import List
 from roboflow import Roboflow
 import supervision as sv
 import cv2
+import numpy as np
 
 from src.utils.config import ProjectConfig, RoboflowConfig
 from src.utils.logger import setup_logger
@@ -56,34 +58,63 @@ class RoboflowClient:
         self.logger.info(f"Detected {len(result['predictions'])} holds on the image.")
         return result
 
+    # def visualize_detections(self, image_path: Path, result: dict, output_path: Path) -> None:
+    #     """
+    #     Visualize the detected holds on the climbing route image.
+    #
+    #     Args:
+    #         image_path (Path): Path to the image with the climbing route
+    #         result (dict): Detected holds with their coordinates (API response)
+    #         output_path (Path): Path to save the output image
+    #     """
+    #     self.logger.info(f"Visualizing detected holds on the image: {image_path}")
+    #
+    #     image = cv2.imread(str(image_path))
+    #     detections = sv.Detections.from_inference(result) # yep the from_inference method works
+    #
+    #     # Annotators for labels and masks
+    #     label_annotator = sv.LabelAnnotator()
+    #     mask_annotator = sv.MaskAnnotator()
+    #
+    #     # Overlaping labels and masks on the image
+    #     annotated_image = mask_annotator.annotate(scene=image, detections=detections)
+    #     # labels = ["hold"] * len(result["predictions"])
+    #     labels = [f"hold {i+1}" for i in range(len(result["predictions"]))] # numerated version of the labels
+    #     annotated_image = label_annotator.annotate(
+    #         scene=annotated_image,
+    #         labels=labels,
+    #         detections=detections
+    #     )
+    #
+    #     # Save the output image
+    #     cv2.imwrite(str(output_path), annotated_image)
     def visualize_detections(self, image_path: Path, result: dict, output_path: Path) -> None:
         """
         Visualize the detected holds on the climbing route image.
 
         Args:
-            image_path (Path): Path to the image with the climbing route
-            result (dict): Detected holds with their coordinates (API response)
-            output_path (Path): Path to save the output image
+             image_path (Path): Path to the image with the climbing route
+             result (dict): Detected holds with their coordinates (API response)
+             output_path (Path): Path to save the output image
         """
-        self.logger.info(f"Visualizing detected holds on the image: {image_path}")
-
         image = cv2.imread(str(image_path))
-        detections = sv.Detections.from_inference(result) # yep the from_inference method works
 
-        # Annotators for labels and masks
-        label_annotator = sv.LabelAnnotator()
-        mask_annotator = sv.MaskAnnotator()
+        for pred in result['predictions']:
+            # Makes a list of points from the prediction
+            points = np.array([[p['x'], p['y']] for p in pred['points']], np.int32)
+            points = points.reshape((-1, 1, 2))  # Reshape points to fit cv2.polylines
 
-        # Overlaping labels and masks on the image
-        annotated_image = mask_annotator.annotate(scene=image, detections=detections)
-        # labels = ["hold"] * len(result["predictions"])
-        labels = [f"hold {i+1}" for i in range(len(result["predictions"]))] # numerated version of the labels
-        annotated_image = label_annotator.annotate(
-            scene=annotated_image,
-            labels=labels,
-            detections=detections
-        )
+            # Draw the contour
+            cv2.polylines(image, [points], True, (0, 255, 0), 2)
 
-        # Save the output image
-        cv2.imwrite(str(output_path), annotated_image)
+            # Add text with confidence
+            cv2.putText(image,
+                        f"hold {result['predictions'].index(pred) + 1}: {pred['confidence']:.2f}",
+                        (int(pred['x']), int(pred['y'])),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        0.5,
+                        (255, 255, 255),
+                        2)
+
+        cv2.imwrite(str(output_path), image)
         self.logger.info(f"Visualized image saved to: {output_path}")
