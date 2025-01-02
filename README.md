@@ -50,7 +50,7 @@ climbing_route_creator/              # Główny katalog projektu
 │           ├── __init__.py
 │           └── route_repository.py
 │
-├── tests/                         # Testy
+├── tests/                         # Testy - currently not implemented
 │   ├── __init__.py
 │   ├── conftest.py              # Konfiguracja testów
 │   ├── test_api/               # Testy modułu API
