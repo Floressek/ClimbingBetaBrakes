@@ -68,7 +68,7 @@ class RoboflowClient:
         self.logger.info(f"Visualizing detected holds on the image: {image_path}")
 
         image = cv2.imread(str(image_path))
-        detections = sv.Detections.from_roboflow(result)
+        detections = sv.Detections.from_roboflow(result) # TODO: if wont work try: from_inference(result) doc
 
         # Annotators for labels and masks
         label_annotator = sv.LabelAnnotator()
