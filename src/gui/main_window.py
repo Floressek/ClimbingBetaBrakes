@@ -5,6 +5,9 @@ from .widgets.hold_viewer import HoldViewer
 from .widgets.route_toolbar import RouteToolbar
 from src.utils.logger import setup_logger
 from src.utils.config import ProjectConfig
+from src.core.movement_type import HoldType
+
+logger = setup_logger("gui/main_window", ProjectConfig.get_log_file("gui"))
 
 
 class MainWindow(QMainWindow):
@@ -58,6 +61,11 @@ class MainWindow(QMainWindow):
         self.route_toolbar.new_route_button.clicked.connect(self.start_new_route)
         self.route_toolbar.save_route_button.clicked.connect(self.save_current_route)
 
+        self.route_toolbar.hands_button.clicked.connect(lambda: self._set_hold_type(HoldType.HAND))
+        self.route_toolbar.feet_button.clicked.connect(lambda: self._set_hold_type(HoldType.FEET))
+        # self.route_toolbar.show_numbers.clicked.connect(self._toggle_numbers)
+        # self.route_toolbar.edit_arrows.clicked.connect(self._toggle_arrows)
+
     def start_new_route(self):
         """Starts creating a new route."""
         self.logger.info("Starting new route creation")
@@ -76,3 +84,17 @@ class MainWindow(QMainWindow):
         selected_holds = [h for h in self.hold_viewer.holds if h.is_selected]
         if selected_holds:
             self.logger.info(f"Route has {len(selected_holds)} holds")
+
+    def _set_hold_type(self, hold_type: HoldType):
+        self.hold_viewer.current_hold_type = hold_type
+        logger.info(f"Set hold type to {hold_type}")
+
+    def _toggle_numbers(self):
+        self.hold_viewer.show_numbers = self.route_toolbar.show_numbers.isChecked()
+        self.hold_viewer.update()
+
+    def _toggle_arrows(self):
+        self.hold_viewer.edit_arrows = self.route_toolbar.edit_arrows.isChecked()
+        self.hold_viewer.update()
+
+

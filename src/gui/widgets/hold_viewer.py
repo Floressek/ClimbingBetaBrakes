@@ -1,8 +1,9 @@
-from PyQt5.QtWidgets import QWidget, QVBoxLayout
+from PyQt5.QtWidgets import QWidget
 from PyQt5.QtGui import QPainter, QColor, QPen, QPixmap, QPainterPath
 from PyQt5.QtCore import Qt, QPoint, QSize
 from typing import List, Optional
 from src.core.hold import Hold
+from src.core.movement_type import HoldType
 from src.utils.logger import setup_logger
 from src.utils.config import ProjectConfig
 
@@ -22,12 +23,17 @@ class HoldViewer(QWidget):
 
     def __init__(self, parent=None) -> None:
         super().__init__(parent)  # Why super because it is a subclass of QWidget
+        self.current_hold_type = HoldType.HAND  # Default hold type
         self.holds: List[Hold] = []
         self.next_hold_order = 0  # Counter for the order of the next hold in the route
         self.wall_image: Optional[QPixmap] = None  # Image of the climbing wall
         self.setMouseTracking(True)
         self.scaled_points_cache = {}
         self.scale_factor = 1.0
+        self.arrow_edit_mode = False
+        self.selected_arrow = None
+        self.arrow_points = {} # Arrow ID -> dict that contains control points
+        self.show_numbers = False
 
     def load_image(self, image_path: str) -> None:
         """Loads the climbing wall image"""
@@ -84,13 +90,13 @@ class HoldViewer(QWidget):
 
         # Draw the holds
         for hold in self.holds:
-            logger.debug(f"Drawing hold: {hold}")
+            # logger.debug(f"Drawing hold: {hold}")
             self.draw_hold(painter, hold)
 
         # Draw route connections
         selected_holds = [h for h in self.holds if h.is_selected]
         selected_holds.sort(key=lambda h: h.order_in_route)
-        logger.debug(f"Selected holds for route connections: {selected_holds}")
+        # logger.debug(f"Selected holds for route connections: {selected_holds}")
         if len(selected_holds) > 1:
             logger.debug("Drawing route connections")
             self.draw_route_connections(painter, selected_holds)
@@ -223,7 +229,7 @@ class HoldViewer(QWidget):
                 scaled_x, scaled_y = self.get_scaled_coordinates(p.x, p.y)
                 scaled_points.append(QPoint(int(scaled_x), int(scaled_y))) # Close the polygon
             painter.drawPolyline(scaled_points)
-            logger.debug(f"Drawing hold contour: {scaled_points}")
+            # logger.debug(f"Drawing hold contour: {scaled_points}")
         else:
             logger.warning("No contour points available for hold")
             # Jeśli nie ma punktów konturu, narysuj okrąg
@@ -232,23 +238,63 @@ class HoldViewer(QWidget):
             painter.drawEllipse(QPoint(int(scaled_x), int(scaled_y)), radius, radius)
             logger.debug(f"Drawing hold circle at position ({scaled_x}, {scaled_y})")
 
+    def draw_numbered_arrow(self, painter: QPainter, hold1: Hold, hold2: Hold, number: int, color: QColor) -> None:
+        """
+        Draws an arrow between two holds with a number on it.
+        """
+        # Calculate the scaled coordinates of the hold points
+        x1, y1 = self.get_scaled_coordinates(hold1.x, hold1.y)
+        x2, y2 = self.get_scaled_coordinates(hold2.x, hold2.y)
+
+        # Draw the arrow
+        pen = QPen(color, 2)
+        painter.setPen(pen)
+        painter.drawLine(int(x1), int(y1), int(x2), int(y2))
+
+        if self.show_numbers:
+            mid_x = (x1 + x2) / 2
+            mid_y = (y1 + y2) / 2
+            painter.drawText(mid_x, mid_y, str(number))
+
+    def draw_simple_arrow(self, painter: QPainter, hold1: Hold, hold2: Hold, color: QColor) -> None:
+        """
+        Draws a simple arrow between two holds.
+        """
+        # Calculate the scaled coordinates of the hold points
+        x1, y1 = self.get_scaled_coordinates(hold1.x, hold1.y)
+        x2, y2 = self.get_scaled_coordinates(hold2.x, hold2.y)
+
+        # Draw the arrow
+        pen = QPen(color, 2)
+        painter.setPen(pen)
+        painter.drawLine(int(x1), int(y1), int(x2), int(y2))
+
     def draw_route_connections(self, painter: QPainter, selected_holds: List[Hold]) -> None:
         """
         Draws connections between the selected holds to represent the climbing route.
         """
-        # Set the color for the route connections
-        color = QColor(0, 255, 0)
-        pen = QPen(color, 2)
-        painter.setPen(pen)
+        # # Set the color for the route connections
+        # color = QColor(0, 255, 0)
+        # pen = QPen(color, 2)
+        # painter.setPen(pen)
 
         # Draw the connections between the selected holds
         for i in range(len(selected_holds) - 1):
             hold1 = selected_holds[i]
             hold2 = selected_holds[i + 1]
 
-            x1, y1 = self.get_scaled_coordinates(hold1.x, hold1.y)
-            x2, y2 = self.get_scaled_coordinates(hold2.x, hold2.y)
-            painter.drawLine(int(x1), int(y1), int(x2), int(y2))
+            # Color based on hold type
+            color = QColor(0, 120, 255) if hold1.hold_type == HoldType.HAND else QColor(0, 255, 0)
+
+            # x1, y1 = self.get_scaled_coordinates(hold1.x, hold1.y)
+            # x2, y2 = self.get_scaled_coordinates(hold2.x, hold2.y)
+            # painter.drawLine(int(x1), int(y1), int(x2), int(y2))
+
+            # Strzałka z numeracją
+            if self.show_numbers:
+                self.draw_numbered_arrow(painter, hold1, hold2, i + 1, color)
+            else:
+                self.draw_simple_arrow(painter, hold1, hold2, color)
 
     def mousePressEvent(self, event) -> None:
         """
@@ -257,6 +303,7 @@ class HoldViewer(QWidget):
         - if the hold wasn't selected - selects it and gives it the next order number
         - if the hold was selected - deselects it
         """
+
         if not self.wall_image:
             return
 
@@ -274,6 +321,7 @@ class HoldViewer(QWidget):
                 if not hold.is_selected:
                     hold.is_selected = True
                     hold.order_in_route = self.next_hold_order
+                    hold.hold_type = self.current_hold_type # MainWindow -> HoldViewer -> Hold
                     self.next_hold_order += 1
                 else:
                     # Disable the hold selection

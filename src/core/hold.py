@@ -5,6 +5,7 @@ from shapely.geometry import Polygon, Point
 
 from src.utils import ProjectConfig
 from src.utils.logger import setup_logger
+from src.core.movement_type import HoldType
 
 logger = setup_logger("core/hold", ProjectConfig.get_log_file("core"))
 
@@ -58,6 +59,7 @@ class Hold:
     is_selected: bool = False
     order_in_route: Optional[int] = None
     comment: Optional[str] = None
+    hold_type: HoldType = HoldType.HAND # Default to hands
 
     @classmethod
     def from_detection(cls, detection: dict) -> 'Hold':
