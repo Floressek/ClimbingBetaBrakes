@@ -18,7 +18,9 @@ class MainWindow(QMainWindow):
         self.logger = setup_logger("gui", ProjectConfig.get_log_file("gui"))
         self.logger.info("Initializing main application window")
 
+        # Ustawiamy tytuł i domyślny rozmiar okna
         self.setWindowTitle("Climbing Route Creator")
+        self.resize(1024, 768)  # Dodajemy domyślny rozmiar
         self.setup_ui()
 
     def setup_ui(self):
@@ -33,6 +35,8 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(main_widget)
 
         main_layout = QVBoxLayout(main_widget)
+        main_layout.setContentsMargins(10, 10, 10, 10)
+        main_layout.setSpacing(10)
 
         # Add the route toolbar
         self.route_toolbar = RouteToolbar(self)
@@ -40,7 +44,8 @@ class MainWindow(QMainWindow):
 
         # Add the main hold viewer widget
         self.hold_viewer = HoldViewer(self)
-        main_layout.addWidget(self.hold_viewer)
+        self.hold_viewer.setMinimumSize(800, 600)
+        main_layout.addWidget(self.hold_viewer, 1)
 
         # Initialize application state
         self.initialize_state()

@@ -47,7 +47,7 @@ class CustomFormatter(logging.Formatter):
         return self.grey
 
 
-def setup_logger(name: str, log_file: str, level: int = logging.INFO) -> logging.Logger:
+def setup_logger(name: str, log_file: str, level: int = logging.DEBUG) -> logging.Logger:
     """
     Return a logger with the specified name and level.
 

@@ -1,5 +1,7 @@
 # src/main.py
 import sys
+
+from PyQt5.QtCore import QTimer
 from PyQt5.QtWidgets import QApplication
 
 from src.core.hold import Hold
@@ -9,53 +11,70 @@ from api.roboflow_client import RoboflowClient
 from gui.main_window import MainWindow
 
 
+# def run_application():
+#     """Runs the main GUI application."""
+#     try:
+#         # Initialize application
+#         app = QApplication(sys.argv)
+#         window = MainWindow()
+#         window.show()
+#
+#         # Load image and holds
+#         image_path = ProjectConfig.PROJECT_ROOT / "data" / "images" / "test_wall_2.jpg"
+#         window.hold_viewer.load_image(str(image_path))
+#
+#         return app.exec_()
+#
+#     except Exception as e:
+#         print(f"Application error: {str(e)}")
+#         raise
+#
+# if __name__ == "__main__":
+#     sys.exit(run_application())
+
 def run_application():
     """Runs the main GUI application."""
-    # Initialize logging
-    logger = setup_logger("main", ProjectConfig.get_log_file("main"))
-    logger.info("Starting Climbing Route Creator")
-
     try:
-        # Initialize project configuration
+        # Initialize application and config
+        app = QApplication(sys.argv)
         ProjectConfig.initialize()
 
-        # Initialize Roboflow client
+        # Create and show window first
+        window = MainWindow()
+        window.show()
+
+        # Initialize Roboflow after showing window
         roboflow_config = ProjectConfig.get_roboflow_config()
         client = RoboflowClient(roboflow_config)
 
-        # Create Qt application
-        app = QApplication(sys.argv)
-        window = MainWindow()
-
-        # Load and detect holds in example image
-        image_path = ProjectConfig.PROJECT_ROOT / "data" / "images" / "test_wall_2.jpg"
-
-        # First load the image into HoldViewer
+        # Load image
+        image_path = ProjectConfig.PROJECT_ROOT / "data" / "images" / "test_wall_3.jpg"
         window.hold_viewer.load_image(str(image_path))
 
-        # Then detect and add holds
-        detection_result = client.detect_holds(image_path)
+        # Funkcja do wykrywania chwytów po uruchomieniu aplikacji
+        def detect_holds():
+            try:
+                detection_result = client.detect_holds(image_path)
+                for pred in detection_result['predictions']:
+                    hold = Hold.from_detection(pred)
+                    window.hold_viewer.holds.append(hold)
+                window.hold_viewer.update()
+            except Exception as e:
+                print(f"Error detecting holds: {e}")
 
-        # Convert detections to Hold objects and pass them to the viewer
-        for pred in detection_result['predictions']:
-            hold = Hold.from_detection(pred)
-            window.hold_viewer.holds.append(hold)
+        # Wywołaj detekcję chwytów po krótkim opóźnieniu
+        QTimer.singleShot(100, detect_holds)
 
-        # Force update of the hold viewer to display everything
-        window.hold_viewer.update()
-
-        # Show the window
-        window.show()
-
-        # Start the application event loop
-        sys.exit(app.exec_())
+        return app.exec_()
 
     except Exception as e:
-        logger.error(f"Application error: {str(e)}")
+        print(f"Application error: {str(e)}")
         raise
 
+
 if __name__ == "__main__":
-    run_application()
+    sys.exit(run_application())
+
 # from pathlib import Path
 # from utils.config import ProjectConfig, RoboflowConfig
 # from utils.logger import setup_logger
