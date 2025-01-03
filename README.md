@@ -3,7 +3,64 @@
 ## Overview
 Climbing Route Creator is a mobile application that helps climbers create, share, and discover climbing routes. Using advanced computer vision technology (Roboflow API), the app automatically detects holds on climbing wall photos and allows users to create routes by selecting holds and adding descriptions. Think of it as a collaborative platform for climbers to share their favorite routes and discover new challenges.
 
-## Key Features
+## Key Features and project structure
+```mermaid
+sequenceDiagram
+    actor User
+    participant App as Application
+    participant MW as MainWindow
+    participant HV as HoldViewer
+    participant RC as RoboflowClient
+    participant API as Roboflow API
+    participant Hold as Hold Objects
+
+    User->>App: Start Application
+    activate App
+    
+    App->>App: Initialize QApplication
+    App->>MW: Create MainWindow
+    activate MW
+    
+    MW->>HV: Create HoldViewer
+    activate HV
+    
+    App->>RC: Initialize RoboflowClient
+    activate RC
+    
+    App->>HV: Load Wall Image
+    
+    App->>RC: Detect Holds
+    RC->>API: API Request
+    API-->>RC: Response with Detections
+    
+    loop For each detection
+        RC->>Hold: Create Hold Object
+        Hold-->>HV: Add Hold to Viewer
+    end
+    
+    HV->>HV: Update View
+    
+    RC-->>App: Detection Complete
+    deactivate RC
+    
+    User->>HV: Click on Hold
+    activate HV
+    HV->>HV: Check Click Location
+    HV->>Hold: Update Selection State
+    Hold-->>HV: State Updated
+    HV->>HV: Update View
+    deactivate HV
+    
+    User->>MW: Click "New Route"
+    MW->>HV: Reset Hold Selections
+    HV->>HV: Clear Route
+    
+    User->>MW: Click "Save Route"
+    MW->>HV: Get Selected Holds
+    HV-->>MW: Selected Holds
+    Note over MW: TODO: Save Route
+
+```
 ```
 climbing_route_creator/              # Główny katalog projektu
 │

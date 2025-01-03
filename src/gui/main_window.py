@@ -23,6 +23,9 @@ class MainWindow(QMainWindow):
         self.resize(1024, 768)  # Dodajemy domyślny rozmiar
         self.setup_ui()
 
+        self.hold_viewer.setAttribute(Qt.WA_OpaquePaintEvent)
+        self.hold_viewer.setAttribute(Qt.WA_NoSystemBackground)
+
     def setup_ui(self):
         """
         Configures the user interface layout.
@@ -44,7 +47,7 @@ class MainWindow(QMainWindow):
 
         # Add the main hold viewer widget
         self.hold_viewer = HoldViewer(self)
-        self.hold_viewer.setMinimumSize(800, 600)
+        self.hold_viewer.setMinimumSize(1200, 1300)
         main_layout.addWidget(self.hold_viewer, 1)
 
         # Initialize application state

@@ -1,5 +1,5 @@
 from PyQt5.QtWidgets import QWidget, QVBoxLayout
-from PyQt5.QtGui import QPainter, QColor, QPen, QPixmap
+from PyQt5.QtGui import QPainter, QColor, QPen, QPixmap, QPainterPath
 from PyQt5.QtCore import Qt, QPoint, QSize
 from typing import List, Optional
 from src.core.hold import Hold
@@ -26,6 +26,7 @@ class HoldViewer(QWidget):
         self.next_hold_order = 0  # Counter for the order of the next hold in the route
         self.wall_image: Optional[QPixmap] = None  # Image of the climbing wall
         self.setMouseTracking(True)
+        self.scaled_points_cache = {}
         self.scale_factor = 1.0
 
     def load_image(self, image_path: str) -> None:
@@ -44,38 +45,12 @@ class HoldViewer(QWidget):
         """Sugerowany rozmiar widgetu"""
         if self.wall_image:
             return self.wall_image.size()
-        return QSize(640, 480)
+        return QSize(1080, 880)
 
-    # def paintEvent(self, event) -> None:
-    #     """
-    #     Draws the image and the holds on the widget.
-    #     Method called by the Qt framework whenever the widget needs to be redrawn.
-    #     """
-    #     painter = QPainter(self)
-    #     painter.setRenderHint(QPainter.Antialiasing)
-    #
-    #     # First draw the wall image if available
-    #     if self.wall_image:
-    #         # Skalujemy obraz do wymiarów widgetu zachowując proporcje
-    #         scaled_image = self.wall_image.scaled(
-    #             self.size(),
-    #             Qt.KeepAspectRatio,
-    #             Qt.SmoothTransformation
-    #         )
-    #         # Centrujemy obraz w widgecie
-    #         x = (self.width() - scaled_image.width()) // 2
-    #         y = (self.height() - scaled_image.height()) // 2
-    #         painter.drawPixmap(x, y, scaled_image)
-    #
-    #     # Draw the holds
-    #     for hold in self.holds:
-    #         self.draw_hold(painter, hold)
-    #
-    #     # Draw route connections
-    #     selected_holds = [h for h in self.holds if h.is_selected]
-    #     selected_holds.sort(key=lambda h: h.order_in_route)
-    #     if len(selected_holds) > 1:
-    #         self.draw_route_connections(painter, selected_holds)
+    def resizeEvent(self, event) -> None:
+        """Clear cache and update the widget when resized."""
+        self.scaled_points_cache.clear()
+        super().resizeEvent(event)
 
     def paintEvent(self, event) -> None:
         """
@@ -86,6 +61,9 @@ class HoldViewer(QWidget):
 
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
+        painter.setRenderHint(QPainter.SmoothPixmapTransform)
+
+        painter.setCompositionMode(QPainter.CompositionMode_SourceOver)
 
         # First draw the wall image if available
         if self.wall_image:
@@ -126,25 +104,25 @@ class HoldViewer(QWidget):
         if not self.wall_image:
             return widget_x, widget_y
 
+        # Similar setup as get_scaled_coordinates
         scaled_image = self.wall_image.scaled(
             self.size(),
             Qt.KeepAspectRatio,
             Qt.SmoothTransformation
         )
 
-        # Calculate scale factors
-        scale_x = self.wall_image.width() / scaled_image.width()
-        scale_y = self.wall_image.height() / scaled_image.height()
-
-        # Calculate offsets
         x_offset = (self.width() - scaled_image.width()) // 2
         y_offset = (self.height() - scaled_image.height()) // 2
 
-        # Convert coordinates
-        image_x = (widget_x - x_offset) * scale_x
-        image_y = (widget_y - y_offset) * scale_y
+        # Remove offset
+        image_x = widget_x - x_offset
+        image_y = widget_y - y_offset
 
-        return image_x, image_y
+        # Convert back to original scale
+        scale_x = self.wall_image.width() / scaled_image.width()
+        scale_y = self.wall_image.height() / scaled_image.height()
+
+        return image_x * scale_x, image_y * scale_y
 
     def get_scaled_coordinates(self, x: float, y: float) -> tuple[float, float]:
         """
@@ -154,27 +132,79 @@ class HoldViewer(QWidget):
             logger.warning("No wall image available for scaling")
             return x, y
 
-        # Calculate the scaled point coordinates
+        # Get original and scaled image dimensions
+        orig_width = self.wall_image.width()
+        orig_height = self.wall_image.height()
+
         scaled_image = self.wall_image.scaled(
             self.size(),
             Qt.KeepAspectRatio,
             Qt.SmoothTransformation
         )
+        scaled_width = scaled_image.width()
+        scaled_height = scaled_image.height()
 
-        scale_x = scaled_image.width() / self.wall_image.width()
-        scale_y = scaled_image.height() / self.wall_image.height()
+        # Calculate scale factors
+        scale_x = scaled_width / orig_width
+        scale_y = scaled_height / orig_height
 
-        # Offset the point to the center of the widget
-        x_offset = (self.width() - scaled_image.width()) // 2
-        y_offset = (self.height() - scaled_image.height()) // 2
+        # Calculate offsets for centering
+        x_offset = (self.width() - scaled_width) // 2
+        y_offset = (self.height() - scaled_height) // 2
 
-        # Scale the point coordinates
-        scaled_x = x * scale_x + x_offset
-        scaled_y = y * scale_y + y_offset
+        # Scale coordinates
+        new_x = (x * scale_x) + x_offset
+        new_y = (y * scale_y) + y_offset
 
-        return scaled_x, scaled_y
+        return new_x, new_y
+
+    def get_scaled_points_for_hold(self, hold: Hold) -> List[QPoint]:
+        """Get the scaled contour points for a hold."""
+        # Id of the hold used as a key in the cache
+        cache_key = hold.id
+        if cache_key in self.scaled_points_cache:
+            return self.scaled_points_cache[cache_key]
+
+        scaled_points = []
+        for p in hold.contour_points:
+            x, y = self.get_scaled_coordinates(p.x, p.y)
+            scaled_points.append(QPoint(int(x), int(y)))
+
+        # Save the scaled points in the cache
+        self.scaled_points_cache[cache_key] = scaled_points
+        return scaled_points
 
     def draw_hold(self, painter: QPainter, hold: Hold) -> None:
+        """Draws a single hold with antialiasing and optimized rendering."""
+        color = QColor(0, 255, 0) if hold.is_selected else QColor(200, 200, 200)
+
+        # Better quality rendering
+        pen = QPen(color, 2, Qt.SolidLine)
+        pen.setJoinStyle(Qt.RoundJoin)  # Round line corners
+        pen.setCapStyle(Qt.RoundCap)  # Round line endings
+        painter.setPen(pen)
+
+        if hold.contour_points:
+            # Used for drawing the hold contour buffer
+            points = self.get_scaled_points_for_hold(hold)
+
+            # Close the polygon
+            path = QPainterPath()
+            if points:
+                path.moveTo(points[0])
+                for point in points[1:]:
+                    path.lineTo(point)
+                path.lineTo(points[0])  # Close the polygon
+
+            # Minor optimization - fill the path with a transparent color
+            if hold.is_selected:
+                painter.fillPath(path, QColor(152, 255, 0, 30))  # Clicked color
+            else:
+                painter.fillPath(path, QColor(200, 200, 200, 30))
+
+            painter.drawPath(path)
+
+    def draw_hold_old(self, painter: QPainter, hold: Hold) -> None:
         """
         Draws a single hold on the widget.
         """
@@ -227,14 +257,20 @@ class HoldViewer(QWidget):
         - if the hold wasn't selected - selects it and gives it the next order number
         - if the hold was selected - deselects it
         """
-        click_widget_x = event.pos().x()
-        click_widget_y = event.pos().y()
+        if not self.wall_image:
+            return
+
+        if not self.rect().contains(event.pos()):
+            return  # Ignore clicks outside the widget
+
+        widget_x = event.pos().x()
+        widget_y = event.pos().y()
 
         # Convert click coordinates to image coordinates
-        click_x, click_y = self.get_image_coordinates(click_widget_x, click_widget_y)
+        image_x, image_y = self.get_image_coordinates(widget_x, widget_y)
 
         for hold in self.holds:
-            if hold.contains_point(click_x, click_y):
+            if hold.contains_point(image_x, image_y):
                 if not hold.is_selected:
                     hold.is_selected = True
                     hold.order_in_route = self.next_hold_order

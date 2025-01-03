@@ -68,7 +68,8 @@ def setup_logger(name: str, log_file: str, level: int = logging.DEBUG) -> loggin
     )
 
     # Utwórz handler pliku
-    handler = RotatingFileHandler(log_file, maxBytes=5 * 1024 * 1024, backupCount=2)
+    # handler = RotatingFileHandler(log_file, maxBytes=5 * 1024 * 1024, backupCount=2)
+    handler = logging.FileHandler(log_file, mode='w')
     handler.setFormatter(file_formatter)
 
     # Utwórz handler konsoli z kolorami

@@ -72,10 +72,9 @@ class Hold:
         """
 
         # Transform points from API to HoldPoint objects
-        contour_points_data = detection.get('contour_points', [])
+        contour_points_data = detection.get('points', [])
         contour_points = [
             HoldPoint(point['x'], point['y'])
-            # FIXME(HACK): we re trying unpack operator, if it fails try: (point['x'], point['y'])
             for point in contour_points_data
         ]
         return cls(

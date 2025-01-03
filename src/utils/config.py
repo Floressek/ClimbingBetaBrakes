@@ -102,7 +102,7 @@ class ProjectConfig:
             api_key=os.environ["ROBOFLOW_API_KEY"],
             project_id=os.environ.get("ROBOFLOW_PROJECT_ID", "hold-detection-rnvkl"),
             model_version_id=int(os.environ.get("ROBOFLOW_MODEL_VERSION_ID", 2)),
-            confidence_threshold=float(os.environ.get("ROBOFLOW_CONFIDENCE_THRESHOLD", 0.63)),
+            confidence_threshold=float(os.environ.get("ROBOFLOW_CONFIDENCE_THRESHOLD", 0.25)),
             overlap_threshold=float(os.environ.get("ROBOFLOW_OVERLAP_THRESHOLD", 0.3)),
         )
 
