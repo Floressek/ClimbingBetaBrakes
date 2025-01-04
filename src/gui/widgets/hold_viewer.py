@@ -92,14 +92,14 @@ class HoldViewer(QWidget):
 
         # Draw the holds
         for hold in self.holds:
-            # logger.debug(f"Drawing hold: {hold}")
+            logger.debug(f"Drawing hold: {hold}")
             self.draw_hold(painter, hold)
 
 
         # # Draw route connections
         # selected_holds = [h for h in self.holds if h.is_selected]
         # selected_holds.sort(key=lambda h: h.order_in_route)
-        # logger.debug(f"Selected holds for route connections: {selected_holds}")
+        # logger.debug(f"Selected holds for route connections: {selected_holds}") #TODO add for hands and feet selected holds
         self.draw_route_connections(painter, self.holds)
 
     def get_image_coordinates(self, widget_x: float, widget_y: float) -> tuple[float, float]:
@@ -232,7 +232,7 @@ class HoldViewer(QWidget):
                 scaled_x, scaled_y = self.get_scaled_coordinates(p.x, p.y)
                 scaled_points.append(QPoint(int(scaled_x), int(scaled_y)))  # Close the polygon
             painter.drawPolyline(scaled_points)
-            # logger.debug(f"Drawing hold contour: {scaled_points}")
+            logger.debug(f"Drawing hold contour: {scaled_points}")
         else:
             logger.warning("No contour points available for hold")
             # Jeśli nie ma punktów konturu, narysuj okrąg
