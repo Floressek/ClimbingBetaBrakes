@@ -23,6 +23,8 @@ class HoldViewer(QWidget):
 
     def __init__(self, parent=None) -> None:
         super().__init__(parent)  # Why super because it is a subclass of QWidget
+        self.next_hand_order = 0  # Counter for the order of the next hand in the route
+        self.next_foot_order = 0  # Counter for the order of the next hand in the route
         self.current_hold_type = HoldType.HAND  # Default hold type
         self.holds: List[Hold] = []
         self.next_hold_order = 0  # Counter for the order of the next hold in the route
@@ -32,7 +34,7 @@ class HoldViewer(QWidget):
         self.scale_factor = 1.0
         self.arrow_edit_mode = False
         self.selected_arrow = None
-        self.arrow_points = {} # Arrow ID -> dict that contains control points
+        self.arrow_points = {}  # Arrow ID -> dict that contains control points
         self.show_numbers = False
 
     def load_image(self, image_path: str) -> None:
@@ -93,15 +95,12 @@ class HoldViewer(QWidget):
             # logger.debug(f"Drawing hold: {hold}")
             self.draw_hold(painter, hold)
 
-        # Draw route connections
-        selected_holds = [h for h in self.holds if h.is_selected]
-        selected_holds.sort(key=lambda h: h.order_in_route)
+
+        # # Draw route connections
+        # selected_holds = [h for h in self.holds if h.is_selected]
+        # selected_holds.sort(key=lambda h: h.order_in_route)
         # logger.debug(f"Selected holds for route connections: {selected_holds}")
-        if len(selected_holds) > 1:
-            logger.debug("Drawing route connections")
-            self.draw_route_connections(painter, selected_holds)
-        else:
-            logger.debug("Not enough holds selected to draw route connections")
+        self.draw_route_connections(painter, self.holds)
 
     def get_image_coordinates(self, widget_x: float, widget_y: float) -> tuple[float, float]:
         """
@@ -182,7 +181,12 @@ class HoldViewer(QWidget):
 
     def draw_hold(self, painter: QPainter, hold: Hold) -> None:
         """Draws a single hold with antialiasing and optimized rendering."""
-        color = QColor(0, 255, 0) if hold.is_selected else QColor(200, 200, 200)
+        if hold.is_hand_selected:
+            color = QColor(255, 165, 0)  # Orange dla rąk
+        elif hold.is_foot_selected:
+            color = QColor(255, 0, 0)  # Red dla nóg
+        else:
+            color = QColor(200, 200, 200)  # szary dla niezaznaczonych
 
         # Better quality rendering
         pen = QPen(color, 2, Qt.SolidLine)
@@ -191,26 +195,25 @@ class HoldViewer(QWidget):
         painter.setPen(pen)
 
         if hold.contour_points:
-            # Used for drawing the hold contour buffer
             points = self.get_scaled_points_for_hold(hold)
-
-            # Close the polygon
             path = QPainterPath()
             if points:
                 path.moveTo(points[0])
                 for point in points[1:]:
                     path.lineTo(point)
-                path.lineTo(points[0])  # Close the polygon
+                path.lineTo(points[0])
 
-            # Minor optimization - fill the path with a transparent color
-            if hold.is_selected:
-                painter.fillPath(path, QColor(152, 255, 0, 30))  # Clicked color
+            # Wypełnienie z przezroczystością
+            if hold.is_hand_selected:  # Używamy nowych flag!
+                painter.fillPath(path, QColor(255, 165, 0, 30))  # Orange z przezroczystością
+            elif hold.is_foot_selected:
+                painter.fillPath(path, QColor(255, 0, 0, 30))  # Red z przezroczystością
             else:
-                painter.fillPath(path, QColor(200, 200, 200, 30))
+                painter.fillPath(path, QColor(200, 200, 200, 30))  # Default color
 
             painter.drawPath(path)
 
-    def draw_hold_old(self, painter: QPainter, hold: Hold) -> None:
+    def draw_hold_old(self, painter: QPainter, hold: Hold) -> None:  # FIXME: Delete this method
         """
         Draws a single hold on the widget.
         """
@@ -227,7 +230,7 @@ class HoldViewer(QWidget):
             scaled_points = []
             for p in hold.contour_points:
                 scaled_x, scaled_y = self.get_scaled_coordinates(p.x, p.y)
-                scaled_points.append(QPoint(int(scaled_x), int(scaled_y))) # Close the polygon
+                scaled_points.append(QPoint(int(scaled_x), int(scaled_y)))  # Close the polygon
             painter.drawPolyline(scaled_points)
             # logger.debug(f"Drawing hold contour: {scaled_points}")
         else:
@@ -238,36 +241,36 @@ class HoldViewer(QWidget):
             painter.drawEllipse(QPoint(int(scaled_x), int(scaled_y)), radius, radius)
             logger.debug(f"Drawing hold circle at position ({scaled_x}, {scaled_y})")
 
-    def draw_numbered_arrow(self, painter: QPainter, hold1: Hold, hold2: Hold, number: int, color: QColor) -> None:
-        """
-        Draws an arrow between two holds with a number on it.
-        """
-        # Calculate the scaled coordinates of the hold points
-        x1, y1 = self.get_scaled_coordinates(hold1.x, hold1.y)
-        x2, y2 = self.get_scaled_coordinates(hold2.x, hold2.y)
-
-        # Draw the arrow
-        pen = QPen(color, 2)
-        painter.setPen(pen)
-        painter.drawLine(int(x1), int(y1), int(x2), int(y2))
-
-        if self.show_numbers:
-            mid_x = (x1 + x2) / 2
-            mid_y = (y1 + y2) / 2
-            painter.drawText(mid_x, mid_y, str(number))
-
-    def draw_simple_arrow(self, painter: QPainter, hold1: Hold, hold2: Hold, color: QColor) -> None:
-        """
-        Draws a simple arrow between two holds.
-        """
-        # Calculate the scaled coordinates of the hold points
-        x1, y1 = self.get_scaled_coordinates(hold1.x, hold1.y)
-        x2, y2 = self.get_scaled_coordinates(hold2.x, hold2.y)
-
-        # Draw the arrow
-        pen = QPen(color, 2)
-        painter.setPen(pen)
-        painter.drawLine(int(x1), int(y1), int(x2), int(y2))
+    # def draw_numbered_arrow(self, painter: QPainter, hold1: Hold, hold2: Hold, number: int, color: QColor) -> None:
+    #     """
+    #     Draws an arrow between two holds with a number on it.
+    #     """
+    #     # Calculate the scaled coordinates of the hold points
+    #     x1, y1 = self.get_scaled_coordinates(hold1.x, hold1.y)
+    #     x2, y2 = self.get_scaled_coordinates(hold2.x, hold2.y)
+    #
+    #     # Draw the arrow
+    #     pen = QPen(color, 2)
+    #     painter.setPen(pen)
+    #     painter.drawLine(int(x1), int(y1), int(x2), int(y2))
+    #
+    #     if self.show_numbers:
+    #         mid_x = (x1 + x2) / 2
+    #         mid_y = (y1 + y2) / 2
+    #         painter.drawText(mid_x, mid_y, str(number))
+    #
+    # def draw_simple_arrow(self, painter: QPainter, hold1: Hold, hold2: Hold, color: QColor) -> None:
+    #     """
+    #     Draws a simple arrow between two holds.
+    #     """
+    #     # Calculate the scaled coordinates of the hold points
+    #     x1, y1 = self.get_scaled_coordinates(hold1.x, hold1.y)
+    #     x2, y2 = self.get_scaled_coordinates(hold2.x, hold2.y)
+    #
+    #     # Draw the arrow
+    #     pen = QPen(color, 2)
+    #     painter.setPen(pen)
+    #     painter.drawLine(int(x1), int(y1), int(x2), int(y2))
 
     def draw_route_connections(self, painter: QPainter, selected_holds: List[Hold]) -> None:
         """
@@ -278,23 +281,48 @@ class HoldViewer(QWidget):
         # pen = QPen(color, 2)
         # painter.setPen(pen)
 
-        # Draw the connections between the selected holds
-        for i in range(len(selected_holds) - 1):
-            hold1 = selected_holds[i]
-            hold2 = selected_holds[i + 1]
+        # # Draw the connections between the selected holds
+        # for i in range(len(selected_holds) - 1):
+        #     hold1 = selected_holds[i]
+        #     hold2 = selected_holds[i + 1]
+        #
+        #     # Color based on hold type
+        #     color = QColor(255, 0, 0) if hold1.hold_type == HoldType.HAND else QColor(255, 165, 0)  # COLOR OF LINES
+        #
+        #     # x1, y1 = self.get_scaled_coordinates(hold1.x, hold1.y)
+        #     # x2, y2 = self.get_scaled_coordinates(hold2.x, hold2.y)
+        #     # painter.drawLine(int(x1), int(y1), int(x2), int(y2))
+        #
+        #     # Strzałka z numeracją
+        #     if self.show_numbers:
+        #         self.draw_numbered_arrow(painter, hold1, hold2, i + 1, color)
+        #     else:
+        #         self.draw_simple_arrow(painter, hold1, hold2, color)
 
-            # Color based on hold type
-            color = QColor(0, 120, 255) if hold1.hold_type == HoldType.HAND else QColor(0, 255, 0)
 
-            # x1, y1 = self.get_scaled_coordinates(hold1.x, hold1.y)
-            # x2, y2 = self.get_scaled_coordinates(hold2.x, hold2.y)
-            # painter.drawLine(int(x1), int(y1), int(x2), int(y2))
+        hand_holds = [h for h in self.holds if h.is_hand_selected]
+        hand_holds.sort(key=lambda h: h.hand_order if h.hand_order is not None else float('inf'))
+        if len(hand_holds) > 1:
+            painter.setPen(QPen(QColor(255, 165, 0), 2))  # niebieski
+            for i in range(len(hand_holds) - 1):
+                hold1, hold2 = hand_holds[i], hand_holds[i + 1]
+                if hold1.hand_order is not None and hold2.hand_order is not None:  # sprawdzamy czy mają kolejność
+                    x1, y1 = self.get_scaled_coordinates(hold1.x, hold1.y)
+                    x2, y2 = self.get_scaled_coordinates(hold2.x, hold2.y)
+                    painter.drawLine(int(x1), int(y1), int(x2), int(y2))
 
-            # Strzałka z numeracją
-            if self.show_numbers:
-                self.draw_numbered_arrow(painter, hold1, hold2, i + 1, color)
-            else:
-                self.draw_simple_arrow(painter, hold1, hold2, color)
+        # Rysuj trasę dla nóg (zielona)
+        foot_holds = [h for h in self.holds if h.is_foot_selected]
+        foot_holds.sort(key=lambda h: h.foot_order if h.foot_order is not None else float('inf'))
+
+        if len(foot_holds) > 1:
+            painter.setPen(QPen(QColor(255, 0, 0), 2))  # zielony
+            for i in range(len(foot_holds) - 1):
+                hold1, hold2 = foot_holds[i], foot_holds[i + 1]
+                if hold1.foot_order is not None and hold2.foot_order is not None:  # sprawdzamy czy mają kolejność
+                    x1, y1 = self.get_scaled_coordinates(hold1.x, hold1.y)
+                    x2, y2 = self.get_scaled_coordinates(hold2.x, hold2.y)
+                    painter.drawLine(int(x1), int(y1), int(x2), int(y2))
 
     def mousePressEvent(self, event) -> None:
         """
@@ -316,32 +344,79 @@ class HoldViewer(QWidget):
         # Convert click coordinates to image coordinates
         image_x, image_y = self.get_image_coordinates(widget_x, widget_y)
 
+        # Old for only one type of hold / lines ;)
+        # for hold in self.holds:
+        #     if hold.contains_point(image_x, image_y):
+        #         if not hold.is_selected:
+        #             hold.is_selected = True
+        #             hold.order_in_route = self.next_hold_order
+        #             hold.hold_type = self.current_hold_type  # MainWindow -> HoldViewer -> Hold
+        #             self.next_hold_order += 1
+        #         else:
+        #             # Disable the hold selection
+        #             hold.is_selected = False
+        #             hold.order_in_route = None
+        #             # Update the order of the remaining holds
+        #             self._update_hold_order()
+        #
+        #         self.update()
+        #         break
+
         for hold in self.holds:
             if hold.contains_point(image_x, image_y):
-                if not hold.is_selected:
-                    hold.is_selected = True
-                    hold.order_in_route = self.next_hold_order
-                    hold.hold_type = self.current_hold_type # MainWindow -> HoldViewer -> Hold
-                    self.next_hold_order += 1
-                else:
-                    # Disable the hold selection
-                    hold.is_selected = False
-                    hold.order_in_route = None
-                    # Update the order of the remaining holds
-                    self._update_hold_order()
+                if self.current_hold_type == HoldType.HAND:
+                    if not hold.is_hand_selected:
+                        hold.is_hand_selected = True
+                        hold.hand_order = self.next_hand_order  # ustawiamy kolejność
+                        self.next_hand_order += 1
+                    else:
+                        hold.is_hand_selected = False
+                        hold.hand_order = None
+                        self._update_hand_order()
+                else:  # FOOT
+                    if not hold.is_foot_selected:
+                        hold.is_foot_selected = True
+                        hold.foot_order = self.next_foot_order  # ustawiamy kolejność
+                        self.next_foot_order += 1
+                    else:
+                        hold.is_foot_selected = False
+                        hold.foot_order = None
+                        self._update_foot_order()
 
                 self.update()
                 break
 
-    def _update_hold_order(self) -> None:
-        """
-        Updates the order of the holds in the route after a hold has been deselected.
-        """
-        selected_holds = [h for h in self.holds if h.is_selected]
-        selected_holds.sort(key=lambda h: h.order_in_route if h.order_in_route is not None else float(
-            'inf'))  # Sort the selected holds by their order in the route
+    def _update_hand_order(self) -> None:
+        """Updates the order of hand holds."""
+        selected_hand_holds = [h for h in self.holds if h.is_hand_selected]
+        logger.debug(f"Updating order for {len(selected_hand_holds)} hand holds")
 
-        for i, hold in enumerate(selected_holds):
-            hold.order_in_route = i
+        for i, hold in enumerate(selected_hand_holds):
+            hold.hand_order = i
+            logger.debug(f"Hand hold {hold.id} set to order {i}")
 
-        self.next_hold_order = len(selected_holds)
+        self.next_hand_order = len(selected_hand_holds)
+
+    def _update_foot_order(self) -> None:
+        """Updates the order of foot holds."""
+        selected_foot_holds = [h for h in self.holds if h.is_foot_selected]
+        logger.debug(f"Updating order for {len(selected_foot_holds)} foot holds")
+
+        for i, hold in enumerate(selected_foot_holds):
+            hold.foot_order = i
+            logger.debug(f"Foot hold {hold.id} set to order {i}")
+
+        self.next_foot_order = len(selected_foot_holds)
+
+    # def _update_hold_order(self) -> None:
+    #     """
+    #     Updates the order of the holds in the route after a hold has been deselected.
+    #     """
+    #     selected_holds = [h for h in self.holds if h.is_selected]
+    #     selected_holds.sort(key=lambda h: h.order_in_route if h.order_in_route is not None else float(
+    #         'inf'))  # Sort the selected holds by their order in the route
+    #
+    #     for i, hold in enumerate(selected_holds):
+    #         hold.order_in_route = i
+    #
+    #     self.next_hold_order = len(selected_holds)

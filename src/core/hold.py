@@ -46,6 +46,11 @@ class Hold:
         is_selected (bool): Flag indicating whether the hold is selected
         order_in_route (Optional[int]): Order of the hold in the climbing route
         comment (Optional[str]): Comment for the hold
+        hold_type (HoldType): Type of hold (hands or feet)
+        is_hand_selected (bool): Flag indicating whether the hold is selected as a hand hold
+        is_foot_selected (bool): Flag indicating whether the hold is selected as a foot hold
+        hand_order (Optional[int]): Order of the hold in the hands sequence
+        foot_order (Optional[int]): Order of the hold in the feet sequence
 
     """
     id: UUID
@@ -60,6 +65,10 @@ class Hold:
     order_in_route: Optional[int] = None
     comment: Optional[str] = None
     hold_type: HoldType = HoldType.HAND # Default to hands
+    is_hand_selected: bool = False
+    is_foot_selected: bool = False
+    hand_order: Optional[int] = None
+    foot_order: Optional[int] = None
 
     @classmethod
     def from_detection(cls, detection: dict) -> 'Hold':

@@ -11,27 +11,6 @@ from api.roboflow_client import RoboflowClient
 from gui.main_window import MainWindow
 
 
-# def run_application():
-#     """Runs the main GUI application."""
-#     try:
-#         # Initialize application
-#         app = QApplication(sys.argv)
-#         window = MainWindow()
-#         window.show()
-#
-#         # Load image and holds
-#         image_path = ProjectConfig.PROJECT_ROOT / "data" / "images" / "test_wall_2.jpg"
-#         window.hold_viewer.load_image(str(image_path))
-#
-#         return app.exec_()
-#
-#     except Exception as e:
-#         print(f"Application error: {str(e)}")
-#         raise
-#
-# if __name__ == "__main__":
-#     sys.exit(run_application())
-
 def run_application():
     """Runs the main GUI application."""
     try:
@@ -51,7 +30,7 @@ def run_application():
         image_path = ProjectConfig.PROJECT_ROOT / "data" / "images" / "test_wall_3.jpg"
         window.hold_viewer.load_image(str(image_path))
 
-        # Funkcja do wykrywania chwytów po uruchomieniu aplikacji
+        # Function to detect holds and update the viewer
         def detect_holds():
             try:
                 detection_result = client.detect_holds(image_path)
@@ -62,7 +41,7 @@ def run_application():
             except Exception as e:
                 print(f"Error detecting holds: {e}")
 
-        # Wywołaj detekcję chwytów po krótkim opóźnieniu
+        # Slightly delay hold detection to ensure window is shown
         QTimer.singleShot(100, detect_holds)
 
         return app.exec_()
