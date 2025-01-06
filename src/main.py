@@ -1,59 +1,3 @@
-# # src/main.py
-# import sys
-#
-# from PyQt5.QtCore import QTimer
-# from PyQt5.QtWidgets import QApplication
-#
-# from src.core.hold import Hold
-# from utils.config import ProjectConfig
-# from utils.logger import setup_logger
-# from api.roboflow_client import RoboflowClient
-# from gui.main_window import MainWindow
-#
-#
-# def run_application():
-#     """Runs the main GUI application."""
-#     try:
-#         # Initialize application and config
-#         app = QApplication(sys.argv)
-#         ProjectConfig.initialize()
-#
-#         # Create and show window first
-#         window = MainWindow()
-#         window.show()
-#
-#         # Initialize Roboflow after showing window
-#         roboflow_config = ProjectConfig.get_roboflow_config()
-#         client = RoboflowClient(roboflow_config)
-#
-#         # Load image
-#         image_path = ProjectConfig.PROJECT_ROOT / "data" / "images" / "test_wall_3.jpg"
-#         window.hold_viewer.load_image(str(image_path))
-#
-#         # Function to detect holds and update the viewer
-#         def detect_holds():
-#             try:
-#                 detection_result = client.detect_holds(image_path)
-#                 for pred in detection_result['predictions']:
-#                     hold = Hold.from_detection(pred)
-#                     window.hold_viewer.holds.append(hold)
-#                 window.hold_viewer.update()
-#             except Exception as e:
-#                 print(f"Error detecting holds: {e}")
-#
-#         # Slightly delay hold detection to ensure window is shown
-#         QTimer.singleShot(100, detect_holds)
-#
-#         return app.exec_()
-#
-#     except Exception as e:
-#         print(f"Application error: {str(e)}")
-#         raise
-#
-#
-# if __name__ == "__main__":
-#     sys.exit(run_application())
-
 # from pathlib import Path
 # from utils.config import ProjectConfig, RoboflowConfig
 # from utils.logger import setup_logger
@@ -143,59 +87,112 @@
 # if __name__ == "__main__":
 #     analyze_climbing_wall()
 
+
 import sys
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtCore import QTimer
-
 from src.core.hold import Hold
-from src.utils.config import ProjectConfig
 from src.api.roboflow_client import RoboflowClient
 from src.gui.main_window import MainWindow
 from src.gui.widgets.startup_window import StartupWindow
 from src.gui.widgets.loading_window import LoadingWindow
 
+from src.utils.logger import setup_logger
+from src.utils.config import ProjectConfig
+
+logger = setup_logger("main", ProjectConfig.get_log_file("main"))
+
 
 class ClimbingApp:
+    """
+    Main application class for the Climbing Route Creator.
+    """
+
     def __init__(self):
+        logger.info("Initializing ClimbingApp...")
         self.app = QApplication(sys.argv)
+
+        logger.info("Initializing project configuration...")
         ProjectConfig.initialize()
 
-        self.startup = StartupWindow()
-        self.loading = LoadingWindow()
-        self.main_window = None
+        # Initialize windows
+        logger.info("Creating StartupWindow...")
+        self.startup_window = StartupWindow()
+
+        logger.info("Creating LoadingWindow...")
+        self.loading_window = LoadingWindow()
+
+        self.main_window = None  # Main window will be initialized later
+        logger.info("Initializing RoboflowClient...")
         self.roboflow_client = RoboflowClient(ProjectConfig.get_roboflow_config())
 
-        self.startup.image_uploaded.connect(self.handle_image_upload)
+        # Connect signals
+        logger.info("Connecting signals for StartupWindow...")
+        self.startup_window.image_uploaded.connect(self.handle_image_upload)
 
     def run(self):
-        self.startup.show()
+        """
+        Starts the application.
+        :return: Exit code of the application.
+        """
+        logger.info("Starting application...")
+        self.startup_window.show()
         return self.app.exec_()
 
     def handle_image_upload(self, image_path):
-        self.startup.hide()
-        self.loading.show()
-        self.loading.start_animation()
-        QTimer.singleShot(100, lambda: self.init_main_window(image_path))
+        """
+        Handles the image upload event.
+        :param image_path: Path to the uploaded image.
+        """
+        logger.info(f"Image uploaded: {image_path}. Showing LoadingWindow...")
+        self.startup_window.hide()
+        self.loading_window.start_animation()
+        self.loading_window.show()
+
+        # Simulating processing delay for loading window
+        logger.info("Starting image processing simulation...")
+        QTimer.singleShot(5000, lambda: self.init_main_window(image_path))
 
     def init_main_window(self, image_path):
+        """
+        Initializes the main window with the given image path.
+        :param image_path: Path to the uploaded image.
+        """
         try:
+            logger.info("Loading detection results from Roboflow...")
+            detection_result = self.roboflow_client.detect_holds(image_path)
+
+            logger.info("Initializing MainWindow...")
             self.main_window = MainWindow()
+
+            logger.info(f"Loading image into MainWindow: {image_path}")
             self.main_window.hold_viewer.load_image(image_path)
 
-            detection_result = self.roboflow_client.detect_holds(image_path)
+            logger.info("Adding detected holds to HoldViewer...")
             for pred in detection_result['predictions']:
-                self.main_window.hold_viewer.holds.append(Hold.from_detection(pred))
+                hold = Hold.from_detection(pred)
+                logger.debug(f"Detected hold: {hold}")
+                self.main_window.hold_viewer.holds.append(hold)
 
-            self.loading.hide()
+            logger.info("Stopping LoadingWindow animation and hiding it...")
+            self.loading_window.stop_animation()
+            self.loading_window.hide()
+
+            logger.info("Showing MainWindow and updating HoldViewer...")
             self.main_window.show()
             self.main_window.hold_viewer.update()
 
         except Exception as e:
-            print(f"Error: {e}")
+            logger.error(f"Error initializing MainWindow: {e}")
+            self.loading_window.stop_animation()
             raise
 
 
 if __name__ == "__main__":
+    logger.info("Launching Climbing Route Creator...")
     app = ClimbingApp()
     sys.exit(app.run())
+
+
+
 
