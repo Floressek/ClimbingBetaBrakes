@@ -18,65 +18,91 @@ class MainWindow(QMainWindow):
 
     def __init__(self):
         super().__init__()
-        self.logger = setup_logger("gui", ProjectConfig.get_log_file("gui"))
-        self.logger.info("Initializing main application window")
-
-        # Settings for the main window
         self.setWindowTitle("Climbing Route Creator")
-        self.resize(1024, 768)  # Initial window size
+        self.resize(1024, 768)
         self.setup_ui()
-
-        self.hold_viewer.setAttribute(Qt.WA_OpaquePaintEvent)
-        self.hold_viewer.setAttribute(Qt.WA_NoSystemBackground)
+        self.setAttribute(Qt.WA_DeleteOnClose)
 
     def setup_ui(self):
-        """
-        Configures the user interface layout.
-        Main window is divided into:
-        1. Top toolbar with action buttons
-        2. Main area displaying the climbing wall with holds
-        """
-        # Create main widget and layouts
         main_widget = QWidget()
         self.setCentralWidget(main_widget)
+        layout = QVBoxLayout(main_widget)
+        self.resize(1200, 1300)
+        layout.setContentsMargins(10, 10, 10, 10)
 
-        main_layout = QVBoxLayout(main_widget)
-        main_layout.setContentsMargins(10, 10, 10, 10)
-        main_layout.setSpacing(10)
-
-        # Add the route toolbar
         self.route_toolbar = RouteToolbar(self)
-        main_layout.addWidget(self.route_toolbar)
-
-        # Add the main hold viewer widget
         self.hold_viewer = HoldViewer(self)
-        self.hold_viewer.setMinimumSize(1200, 1300)
 
-        # Set attributes for the hold viewer
-        self.hold_viewer.setAttribute(Qt.WA_OpaquePaintEvent)
-        self.hold_viewer.setAttribute(Qt.WA_NoSystemBackground)
+        layout.addWidget(self.route_toolbar)
+        layout.addWidget(self.hold_viewer, 1)
 
-        main_layout.addWidget(self.hold_viewer, 1)
-        # Initialize application state
         self.initialize_state()
 
-
     def initialize_state(self):
-        """Initializes application state and connects signals to slots."""
         self.route_toolbar.new_route_button.clicked.connect(self.start_new_route)
         self.route_toolbar.save_route_button.clicked.connect(self.save_current_route)
-
         self.route_toolbar.hands_button.clicked.connect(lambda: self._set_hold_type(HoldType.HAND))
         self.route_toolbar.feet_button.clicked.connect(lambda: self._set_hold_type(HoldType.FEET))
-        # self.route_toolbar.show_numbers.clicked.connect(self._toggle_numbers)
-        # self.route_toolbar.edit_arrows.clicked.connect(self._toggle_arrows)
-
         self.route_toolbar.curve_edit_button.clicked.connect(
             lambda checked: self.hold_viewer._set_mode("curve_edit" if checked else "normal")
         )
-
-
-
+    # def __init__(self):
+    #     super().__init__()
+    #     self.logger = setup_logger("gui", ProjectConfig.get_log_file("gui"))
+    #     self.logger.info("Initializing main application window")
+    #
+    #     # Settings for the main window
+    #     self.setWindowTitle("Climbing Route Creator")
+    #     self.resize(1024, 768)  # Initial window size
+    #     self.setup_ui()
+    #
+    #     self.hold_viewer.setAttribute(Qt.WA_OpaquePaintEvent)
+    #     self.hold_viewer.setAttribute(Qt.WA_NoSystemBackground)
+    #
+    # def setup_ui(self):
+    #     """
+    #     Configures the user interface layout.
+    #     Main window is divided into:
+    #     1. Top toolbar with action buttons
+    #     2. Main area displaying the climbing wall with holds
+    #     """
+    #     # Create main widget and layouts
+    #     main_widget = QWidget()
+    #     self.setCentralWidget(main_widget)
+    #
+    #     main_layout = QVBoxLayout(main_widget)
+    #     main_layout.setContentsMargins(10, 10, 10, 10)
+    #     main_layout.setSpacing(10)
+    #
+    #     # Add the route toolbar
+    #     self.route_toolbar = RouteToolbar(self)
+    #     main_layout.addWidget(self.route_toolbar)
+    #
+    #     # Add the main hold viewer widget
+    #     self.hold_viewer = HoldViewer(self)
+    #     self.hold_viewer.setMinimumSize(1200, 1300)
+    #
+    #     # Set attributes for the hold viewer
+    #     self.hold_viewer.setAttribute(Qt.WA_OpaquePaintEvent)
+    #     self.hold_viewer.setAttribute(Qt.WA_NoSystemBackground)
+    #
+    #     main_layout.addWidget(self.hold_viewer, 1)
+    #     # Initialize application state
+    #     self.initialize_state()
+    #
+    # def initialize_state(self):
+    #     """Initializes application state and connects signals to slots."""
+    #     self.route_toolbar.new_route_button.clicked.connect(self.start_new_route)
+    #     self.route_toolbar.save_route_button.clicked.connect(self.save_current_route)
+    #
+    #     self.route_toolbar.hands_button.clicked.connect(lambda: self._set_hold_type(HoldType.HAND))
+    #     self.route_toolbar.feet_button.clicked.connect(lambda: self._set_hold_type(HoldType.FEET))
+    #     # self.route_toolbar.show_numbers.clicked.connect(self._toggle_numbers)
+    #     # self.route_toolbar.edit_arrows.clicked.connect(self._toggle_arrows)
+    #
+    #     self.route_toolbar.curve_edit_button.clicked.connect(
+    #         lambda checked: self.hold_viewer._set_mode("curve_edit" if checked else "normal")
+    #     )
 
     def start_new_route(self):
         """Starts creating a new route."""
@@ -107,6 +133,3 @@ class MainWindow(QMainWindow):
     def _set_hold_type(self, hold_type: HoldType):
         self.hold_viewer.current_hold_type = hold_type
         logger.info(f"Set hold type to {hold_type.value}")
-
-
-

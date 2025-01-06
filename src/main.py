@@ -1,58 +1,58 @@
-# src/main.py
-import sys
-
-from PyQt5.QtCore import QTimer
-from PyQt5.QtWidgets import QApplication
-
-from src.core.hold import Hold
-from utils.config import ProjectConfig
-from utils.logger import setup_logger
-from api.roboflow_client import RoboflowClient
-from gui.main_window import MainWindow
-
-
-def run_application():
-    """Runs the main GUI application."""
-    try:
-        # Initialize application and config
-        app = QApplication(sys.argv)
-        ProjectConfig.initialize()
-
-        # Create and show window first
-        window = MainWindow()
-        window.show()
-
-        # Initialize Roboflow after showing window
-        roboflow_config = ProjectConfig.get_roboflow_config()
-        client = RoboflowClient(roboflow_config)
-
-        # Load image
-        image_path = ProjectConfig.PROJECT_ROOT / "data" / "images" / "test_wall_3.jpg"
-        window.hold_viewer.load_image(str(image_path))
-
-        # Function to detect holds and update the viewer
-        def detect_holds():
-            try:
-                detection_result = client.detect_holds(image_path)
-                for pred in detection_result['predictions']:
-                    hold = Hold.from_detection(pred)
-                    window.hold_viewer.holds.append(hold)
-                window.hold_viewer.update()
-            except Exception as e:
-                print(f"Error detecting holds: {e}")
-
-        # Slightly delay hold detection to ensure window is shown
-        QTimer.singleShot(100, detect_holds)
-
-        return app.exec_()
-
-    except Exception as e:
-        print(f"Application error: {str(e)}")
-        raise
-
-
-if __name__ == "__main__":
-    sys.exit(run_application())
+# # src/main.py
+# import sys
+#
+# from PyQt5.QtCore import QTimer
+# from PyQt5.QtWidgets import QApplication
+#
+# from src.core.hold import Hold
+# from utils.config import ProjectConfig
+# from utils.logger import setup_logger
+# from api.roboflow_client import RoboflowClient
+# from gui.main_window import MainWindow
+#
+#
+# def run_application():
+#     """Runs the main GUI application."""
+#     try:
+#         # Initialize application and config
+#         app = QApplication(sys.argv)
+#         ProjectConfig.initialize()
+#
+#         # Create and show window first
+#         window = MainWindow()
+#         window.show()
+#
+#         # Initialize Roboflow after showing window
+#         roboflow_config = ProjectConfig.get_roboflow_config()
+#         client = RoboflowClient(roboflow_config)
+#
+#         # Load image
+#         image_path = ProjectConfig.PROJECT_ROOT / "data" / "images" / "test_wall_3.jpg"
+#         window.hold_viewer.load_image(str(image_path))
+#
+#         # Function to detect holds and update the viewer
+#         def detect_holds():
+#             try:
+#                 detection_result = client.detect_holds(image_path)
+#                 for pred in detection_result['predictions']:
+#                     hold = Hold.from_detection(pred)
+#                     window.hold_viewer.holds.append(hold)
+#                 window.hold_viewer.update()
+#             except Exception as e:
+#                 print(f"Error detecting holds: {e}")
+#
+#         # Slightly delay hold detection to ensure window is shown
+#         QTimer.singleShot(100, detect_holds)
+#
+#         return app.exec_()
+#
+#     except Exception as e:
+#         print(f"Application error: {str(e)}")
+#         raise
+#
+#
+# if __name__ == "__main__":
+#     sys.exit(run_application())
 
 # from pathlib import Path
 # from utils.config import ProjectConfig, RoboflowConfig
@@ -142,4 +142,60 @@ if __name__ == "__main__":
 #
 # if __name__ == "__main__":
 #     analyze_climbing_wall()
+
+import sys
+from PyQt5.QtWidgets import QApplication
+from PyQt5.QtCore import QTimer
+
+from src.core.hold import Hold
+from src.utils.config import ProjectConfig
+from src.api.roboflow_client import RoboflowClient
+from src.gui.main_window import MainWindow
+from src.gui.widgets.startup_window import StartupWindow
+from src.gui.widgets.loading_window import LoadingWindow
+
+
+class ClimbingApp:
+    def __init__(self):
+        self.app = QApplication(sys.argv)
+        ProjectConfig.initialize()
+
+        self.startup = StartupWindow()
+        self.loading = LoadingWindow()
+        self.main_window = None
+        self.roboflow_client = RoboflowClient(ProjectConfig.get_roboflow_config())
+
+        self.startup.image_uploaded.connect(self.handle_image_upload)
+
+    def run(self):
+        self.startup.show()
+        return self.app.exec_()
+
+    def handle_image_upload(self, image_path):
+        self.startup.hide()
+        self.loading.show()
+        self.loading.start_animation()
+        QTimer.singleShot(100, lambda: self.init_main_window(image_path))
+
+    def init_main_window(self, image_path):
+        try:
+            self.main_window = MainWindow()
+            self.main_window.hold_viewer.load_image(image_path)
+
+            detection_result = self.roboflow_client.detect_holds(image_path)
+            for pred in detection_result['predictions']:
+                self.main_window.hold_viewer.holds.append(Hold.from_detection(pred))
+
+            self.loading.hide()
+            self.main_window.show()
+            self.main_window.hold_viewer.update()
+
+        except Exception as e:
+            print(f"Error: {e}")
+            raise
+
+
+if __name__ == "__main__":
+    app = ClimbingApp()
+    sys.exit(app.run())
 

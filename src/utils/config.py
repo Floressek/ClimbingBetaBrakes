@@ -46,7 +46,7 @@ class ProjectConfig:
 
     # Application settings
     MAX_IMAGE_SIZE = 4096  # Maximum image size for display
-    SUPPORTED_IMAGE_FORMATS = ["png", "jpg", "jpeg"]
+    SUPPORTED_IMAGE_FORMATS = [".png", ".jpg", ".jpeg"]
     MAX_CACHE_SIZE = 500  # Maximum number of items in cache
 
     # Logger for the conf module
