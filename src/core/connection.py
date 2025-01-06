@@ -7,6 +7,7 @@ from src.utils.logger import setup_logger
 
 logger = setup_logger("core/connection", ProjectConfig.get_log_file("core"))
 
+
 @dataclass
 class Connection:
     """
@@ -26,7 +27,7 @@ class Connection:
     id: UUID
     hold1: Hold
     hold2: Hold
-    is_curved: bool
+    is_curved: bool = True
     number: Optional[int] = None
     control_points: Optional[Tuple[float, float]] = None
 
@@ -53,4 +54,7 @@ class Connection:
         if not (self.hold1 and self.hold2):
             logger.error("Cannot calculate midpoint without both holds.")
             return None
-        return (self.hold1.x + self.hold2.x) / 2, (self.hold1.y + self.hold2.y) / 2
+        return (
+            (self.hold1.x + self.hold2.x) / 2,
+            (self.hold1.y + self.hold2.y) / 2
+        )

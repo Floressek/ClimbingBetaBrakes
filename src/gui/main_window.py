@@ -21,9 +21,9 @@ class MainWindow(QMainWindow):
         self.logger = setup_logger("gui", ProjectConfig.get_log_file("gui"))
         self.logger.info("Initializing main application window")
 
-        # Ustawiamy tytuł i domyślny rozmiar okna
+        # Settings for the main window
         self.setWindowTitle("Climbing Route Creator")
-        self.resize(1024, 768)  # Dodajemy domyślny rozmiar
+        self.resize(1024, 768)  # Initial window size
         self.setup_ui()
 
         self.hold_viewer.setAttribute(Qt.WA_OpaquePaintEvent)
@@ -52,7 +52,7 @@ class MainWindow(QMainWindow):
         self.hold_viewer = HoldViewer(self)
         self.hold_viewer.setMinimumSize(1200, 1300)
 
-        # Ustawienia po utworzeniu hold_viewer
+        # Set attributes for the hold viewer
         self.hold_viewer.setAttribute(Qt.WA_OpaquePaintEvent)
         self.hold_viewer.setAttribute(Qt.WA_NoSystemBackground)
 
@@ -70,6 +70,16 @@ class MainWindow(QMainWindow):
         self.route_toolbar.feet_button.clicked.connect(lambda: self._set_hold_type(HoldType.FEET))
         # self.route_toolbar.show_numbers.clicked.connect(self._toggle_numbers)
         # self.route_toolbar.edit_arrows.clicked.connect(self._toggle_arrows)
+
+        self.route_toolbar.curve_edit_button.clicked.connect(
+            lambda checked: self._set_mode("curve_edit" if checked else "normal")
+        )
+
+    def _set_mode(self, mode: str) -> None:
+        """Sets the current mode of the hold viewer."""
+        self.hold_viewer.current_mode = mode
+        self.logger.info(f"Set mode to {mode}")
+
 
     def start_new_route(self):
         """Starts creating a new route."""
@@ -101,12 +111,5 @@ class MainWindow(QMainWindow):
         self.hold_viewer.current_hold_type = hold_type
         logger.info(f"Set hold type to {hold_type.value}")
 
-    def _toggle_numbers(self):
-        self.hold_viewer.show_numbers = self.route_toolbar.show_numbers.isChecked()
-        self.hold_viewer.update()
-
-    def _toggle_arrows(self):
-        self.hold_viewer.edit_arrows = self.route_toolbar.edit_arrows.isChecked()
-        self.hold_viewer.update()
 
 

@@ -58,10 +58,15 @@ class RouteToolbar(QWidget):
         # Section 3: Editing options
         self.show_numbers = QPushButton("Show Numbers")
         self.show_numbers.setCheckable(True)
-        self.edit_arrows = QPushButton("Edit Arrows")
-        self.edit_arrows.setCheckable(True)
+        # self.edit_arrows = QPushButton("Edit Arrows")
+        # self.edit_arrows.setCheckable(True)
+
+        self.curve_edit_button = QPushButton("Edit Curves")
+        self.curve_edit_button.setCheckable(True)
+
+        layout.addWidget(self.curve_edit_button)
         layout.addWidget(self.show_numbers)
-        layout.addWidget(self.edit_arrows)
+        # layout.addWidget(self.edit_arrows)
 
         # Vertical divider (spacer to ensure equal spacing)
         layout.addSpacerItem(QSpacerItem(20, 0, QSizePolicy.Expanding, QSizePolicy.Minimum))

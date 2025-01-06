@@ -11,7 +11,7 @@ from src.utils import ProjectConfig
 
 logger = setup_logger("storage/repositories/route", ProjectConfig.get_log_file("storage/route"))
 
-class RouteRepository: #FIXME: TODO: Change it to actual database
+class RouteRepository:
     """
     Repository class for managing routes.
     Handles basic CRUD operations for routes.
