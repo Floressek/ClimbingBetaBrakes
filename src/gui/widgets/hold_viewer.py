@@ -219,33 +219,6 @@ class HoldViewer(QWidget):
 
             painter.drawPath(path)
 
-    # def draw_hold_old(self, painter: QPainter, hold: Hold) -> None:  # FIXME: Delete this method
-    #     """
-    #     Draws a single hold on the widget.
-    #     """
-    #     # Set the color based on whether the hold is selected
-    #     color = QColor(0, 255, 0) if hold.is_selected else QColor(200, 200, 200)
-    #
-    #     # Draw the hold contour
-    #     pen = QPen(color, 2)
-    #     painter.setPen(pen)
-    #
-    #     # Draw the hold contour points
-    #     if hold.contour_points:
-    #         # Calculate the scaled coordinates of the hold points
-    #         scaled_points = []
-    #         for p in hold.contour_points:
-    #             scaled_x, scaled_y = self.get_scaled_coordinates(p.x, p.y)
-    #             scaled_points.append(QPoint(int(scaled_x), int(scaled_y)))  # Close the polygon
-    #         painter.drawPolyline(scaled_points)
-    #         logger.debug(f"Drawing hold contour: {scaled_points}")
-    #     else:
-    #         logger.warning("No contour points available for hold")
-    #         # Jeśli nie ma punktów konturu, narysuj okrąg
-    #         scaled_x, scaled_y = self.get_scaled_coordinates(hold.x, hold.y)
-    #         radius = 10  # możemy też przeskalować promień jeśli potrzeba
-    #         painter.drawEllipse(QPoint(int(scaled_x), int(scaled_y)), radius, radius)
-    #         logger.debug(f"Drawing hold circle at position ({scaled_x}, {scaled_y})")
 
     def draw_route_connections(self, painter: QPainter, selected_holds: List[Hold]) -> None:
         """
@@ -256,7 +229,7 @@ class HoldViewer(QWidget):
         hand_holds = [h for h in self.holds if h.is_hand_selected]
         hand_holds.sort(key=lambda h: h.hand_order if h.hand_order is not None else float('inf'))
 
-        if len(hand_holds) > 1:
+        if len(hand_holds) >= 2:
             painter.setPen(QPen(QColor(255, 165, 0), 2))  # orange
             for i in range(len(hand_holds) - 1):
                 hold1, hold2 = hand_holds[i], hand_holds[i + 1]
@@ -272,7 +245,7 @@ class HoldViewer(QWidget):
         foot_holds = [h for h in self.holds if h.is_foot_selected]
         foot_holds.sort(key=lambda h: h.foot_order if h.foot_order is not None else float('inf'))
 
-        if len(foot_holds) > 1:
+        if len(foot_holds) >= 2:
             painter.setPen(QPen(QColor(255, 0, 0), 2))  # red
             for i in range(len(foot_holds) - 1):
                 hold1, hold2 = foot_holds[i], foot_holds[i + 1]
@@ -416,6 +389,12 @@ class HoldViewer(QWidget):
                 self.update()
                 break
 
+    def _set_mode(self, mode: str) -> None:
+        """Sets the current mode of the hold viewer."""
+        self.current_mode = mode
+        logger.info(f"Set mode to {mode}")
+        self.update()
+
     def _update_hand_order(self) -> None:
         """Updates the order of hand holds."""
         selected_hand_holds = [h for h in self.holds if h.is_hand_selected]
@@ -438,15 +417,3 @@ class HoldViewer(QWidget):
 
         self.next_foot_order = len(selected_foot_holds)
 
-    # def _update_hold_order(self) -> None: # Old for only one type of hold / lines ;)
-    #     """
-    #     Updates the order of the holds in the route after a hold has been deselected.
-    #     """
-    #     selected_holds = [h for h in self.holds if h.is_selected]
-    #     selected_holds.sort(key=lambda h: h.order_in_route if h.order_in_route is not None else float(
-    #         'inf'))  # Sort the selected holds by their order in the route
-    #
-    #     for i, hold in enumerate(selected_holds):
-    #         hold.order_in_route = i
-    #
-    #     self.next_hold_order = len(selected_holds)

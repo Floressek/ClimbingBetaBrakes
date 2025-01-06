@@ -72,13 +72,10 @@ class MainWindow(QMainWindow):
         # self.route_toolbar.edit_arrows.clicked.connect(self._toggle_arrows)
 
         self.route_toolbar.curve_edit_button.clicked.connect(
-            lambda checked: self._set_mode("curve_edit" if checked else "normal")
+            lambda checked: self.hold_viewer._set_mode("curve_edit" if checked else "normal")
         )
 
-    def _set_mode(self, mode: str) -> None:
-        """Sets the current mode of the hold viewer."""
-        self.hold_viewer.current_mode = mode
-        self.logger.info(f"Set mode to {mode}")
+
 
 
     def start_new_route(self):
