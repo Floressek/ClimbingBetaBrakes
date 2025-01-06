@@ -92,7 +92,7 @@ class HoldViewer(QWidget):
             # Centrujemy obraz w widgecie
             x = (self.width() - scaled_image.width()) // 2
             y = (self.height() - scaled_image.height()) // 2
-            logger.debug(f"Drawing wall image at position ({x}, {y})")
+            logger.debug(f"Drawing wall image at position ({x}, {y})") # TODO fixme shows 136, 0 every time
             painter.drawPixmap(x, y, scaled_image)
         else:
             logger.debug("No wall image to draw")
@@ -416,4 +416,162 @@ class HoldViewer(QWidget):
             logger.debug(f"Foot hold {hold.id} set to order {i}")
 
         self.next_foot_order = len(selected_foot_holds)
+
+
+########################## FUN #################################################
+    # def mousePressEvent(self, event) -> None:
+    #     """Handle mouse press events for holds, lines, and curves."""
+    #     logger.debug(f"Mouse pressed at widget coordinates: ({event.pos().x()}, {event.pos().y()})")
+    #
+    #     # Sprawdzenie, czy kliknięcie znajduje się w obrębie widgetu
+    #     if not self.wall_image or not self.rect().contains(event.pos()):
+    #         logger.debug("Mouse press ignored: Outside of wall image or widget.")
+    #         return
+    #
+    #     widget_x, widget_y = event.pos().x(), event.pos().y()
+    #     image_x, image_y = self.get_image_coordinates(widget_x, widget_y)
+    #
+    #     # Tryb edycji krzywych
+    #     if self.current_mode == "curve_edit":
+    #         logger.debug("Current mode: curve_edit")
+    #         for connection in self.get_active_connections():
+    #             # Punkt kontrolny
+    #             if connection.is_curved and connection.control_points:
+    #                 control_x, control_y = self.get_scaled_coordinates(*connection.control_points)
+    #                 dist = ((widget_x - control_x) ** 2 + (widget_y - control_y) ** 2) ** 0.5
+    #                 if dist <= 10:
+    #                     logger.info("Clicked on curve control point.")
+    #                     self.dragged_connection = connection
+    #                     self.drag_point = 'control'
+    #                     return
+    #
+    #             # Punkt środkowy (przełączanie prosty/krzywy)
+    #             mid_x, mid_y = self.get_scaled_coordinates(*connection.midpoint)
+    #             dist = ((widget_x - mid_x) ** 2 + (widget_y - mid_y) ** 2) ** 0.5
+    #             if dist <= 10:
+    #                 logger.info("Clicked on midpoint. Toggling curve/straight line.")
+    #                 if event.button() == Qt.RightButton:
+    #                     connection.is_curved = not connection.is_curved
+    #                     connection.control_points = None if not connection.is_curved else connection.control_points
+    #                 else:
+    #                     self.active_connection = connection
+    #                 self.update()
+    #                 return
+    #
+    #             # Punkty końcowe i linie
+    #             x1, y1 = self.get_scaled_coordinates(connection.hold1.x, connection.hold1.y)
+    #             x2, y2 = self.get_scaled_coordinates(connection.hold2.x, connection.hold2.y)
+    #
+    #             if ((widget_x - x1) ** 2 + (widget_y - y1) ** 2) ** 0.5 <= 10:
+    #                 logger.info("Clicked on line start point.")
+    #                 self.dragged_connection = connection
+    #                 self.drag_point = 'start'
+    #                 return
+    #             elif ((widget_x - x2) ** 2 + (widget_y - y2) ** 2) ** 0.5 <= 10:
+    #                 logger.info("Clicked on line end point.")
+    #                 self.dragged_connection = connection
+    #                 self.drag_point = 'end'
+    #                 return
+    #
+    #             distance = self._point_to_line_distance(widget_x, widget_y, x1, y1, x2, y2)
+    #             if distance <= 10:
+    #                 logger.info("Clicked near a line. Dragging entire line.")
+    #                 self.dragged_connection = connection
+    #                 self.drag_point = 'line'
+    #                 self.start_drag_pos = (widget_x, widget_y)
+    #                 return
+    #
+    #     # Zaznaczanie chwytów (domyślna logika)
+    #     for hold in self.holds:
+    #         if hold.contains_point(image_x, image_y):
+    #             logger.info(f"Clicked on hold: {hold.id}")
+    #             if self.current_hold_type == HoldType.HAND:
+    #                 if not hold.is_hand_selected:
+    #                     hold.is_hand_selected = True
+    #                     hold.hand_order = self.next_hand_order
+    #                     self.next_hand_order += 1
+    #                 else:
+    #                     hold.is_hand_selected = False
+    #                     hold.hand_order = None
+    #                     self._update_hand_order()
+    #             elif self.current_hold_type == HoldType.FEET:
+    #                 if not hold.is_foot_selected:
+    #                     hold.is_foot_selected = True
+    #                     hold.foot_order = self.next_foot_order
+    #                     self.next_foot_order += 1
+    #                 else:
+    #                     hold.is_foot_selected = False
+    #                     hold.foot_order = None
+    #                     self._update_foot_order()
+    #             self.update()
+    #             return
+    #
+    #     logger.debug("Mouse press did not interact with any hold or connection.")
+    #
+    # def mouseMoveEvent(self, event) -> None:
+    #     """Handle dragging of lines, endpoints, and control points."""
+    #     if self.dragged_connection:
+    #         widget_x, widget_y = event.pos().x(), event.pos().y()
+    #         image_x, image_y = self.get_image_coordinates(widget_x, widget_y)
+    #         logger.debug(
+    #             f"Mouse moved to widget coordinates: ({widget_x}, {widget_y}), image coordinates: ({image_x}, {image_y})")
+    #
+    #         if self.drag_point == 'control':
+    #             logger.info("Dragging control point.")
+    #             self.dragged_connection.control_points = (image_x, image_y)
+    #         elif self.drag_point == 'start':
+    #             logger.info("Dragging start point.")
+    #             self.dragged_connection.hold1.x = image_x
+    #             self.dragged_connection.hold1.y = image_y
+    #         elif self.drag_point == 'end':
+    #             logger.info("Dragging end point.")
+    #             self.dragged_connection.hold2.x = image_x
+    #             self.dragged_connection.hold2.y = image_y
+    #         elif self.drag_point == 'line':
+    #             logger.info("Dragging entire line.")
+    #             dx = widget_x - self.start_drag_pos[0]
+    #             dy = widget_y - self.start_drag_pos[1]
+    #             dx_image, dy_image = dx / self.scale_factor, dy / self.scale_factor
+    #
+    #             self.dragged_connection.hold1.x += dx_image
+    #             self.dragged_connection.hold1.y += dy_image
+    #             self.dragged_connection.hold2.x += dx_image
+    #             self.dragged_connection.hold2.y += dy_image
+    #
+    #             self.start_drag_pos = (widget_x, widget_y)
+    #
+    #         self.update()
+    #     else:
+    #         logger.debug("Mouse moved with no active dragging.")
+    #
+    # def mouseReleaseEvent(self, event) -> None:
+    #     """Reset dragging state."""
+    #     if self.dragged_connection:
+    #         logger.info(f"Mouse released. Stopped dragging connection: {self.dragged_connection}")
+    #     else:
+    #         logger.debug("Mouse released with no active dragging.")
+    #     self.dragged_connection = None
+    #     self.drag_point = None
+    #
+    # def get_active_connections(self) -> List[Connection]:
+    #     """Return a list of active connections based on selected holds."""
+    #     connections = []
+    #     for holds, _ in [(self.holds, QColor(255, 165, 0)), (self.holds, QColor(255, 0, 0))]:
+    #         for i in range(len(holds) - 1):
+    #             if holds[i].hand_order is not None and holds[i + 1].hand_order is not None:
+    #                 connections.append(Connection(holds[i], holds[i + 1]))
+    #     return connections
+    #
+    # def _point_to_line_distance(self, px, py, x1, y1, x2, y2) -> float:
+    #     """Calculate the distance from a point to a line segment."""
+    #     line_mag = ((x2 - x1) ** 2 + (y2 - y1) ** 2) ** 0.5
+    #     if line_mag == 0:
+    #         return ((px - x1) ** 2 + (py - y1) ** 2) ** 0.5
+    #
+    #     u = ((px - x1) * (x2 - x1) + (py - y1) * (y2 - y1)) / (line_mag ** 2)
+    #     u = max(0, min(1, u))
+    #     ix = x1 + u * (x2 - x1)
+    #     iy = y1 + u * (y2 - y1)
+    #     return ((px - ix) ** 2 + (py - iy) ** 2) ** 0.5
+
 

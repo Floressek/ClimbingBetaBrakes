@@ -171,7 +171,7 @@ class ClimbingApp:
             logger.info("Adding detected holds to HoldViewer...")
             for pred in detection_result['predictions']:
                 hold = Hold.from_detection(pred)
-                logger.debug(f"Detected hold: {hold}")
+                # logger.debug(f"Detected hold: {hold}")
                 self.main_window.hold_viewer.holds.append(hold)
 
             logger.info("Stopping LoadingWindow animation and hiding it...")
