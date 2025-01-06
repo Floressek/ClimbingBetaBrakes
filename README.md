@@ -167,6 +167,7 @@ source venv/bin/activate  # On Windows use: venv\Scripts\activate
 3. Install dependencies:
 ```bash
 pip install poetry
+poetry install
 poetry update
 ```
 
@@ -203,6 +204,7 @@ The project follows a modular architecture for maintainability and testability:
 For development, install additional dependencies:
 ```bash
 pip install poetry
+poetry install
 poetry update
 ```
 
