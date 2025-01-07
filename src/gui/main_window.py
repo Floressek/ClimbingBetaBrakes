@@ -106,7 +106,7 @@ class MainWindow(QMainWindow):
 
     def start_new_route(self):
         """Starts creating a new route."""
-        self.logger.info("Starting new route creation")
+        logger.info("Starting new route creation")
         # Reset hold selection
         for hold in self.hold_viewer.holds:
             hold.is_hand_selected = False
@@ -122,13 +122,13 @@ class MainWindow(QMainWindow):
 
     def save_current_route(self):
         """Saves the currently created route."""
-        self.logger.info("Saving current route")
+        logger.info("Saving current route")
         # TODO: Implement route saving functionality
         # selected_holds = [h for h in self.hold_viewer.holds if h.is_selected]
         hand_holds = [h for h in self.hold_viewer.holds if h.is_hand_selected]
         foot_holds = [h for h in self.hold_viewer.holds if h.is_foot_selected]
         if hand_holds or foot_holds:
-            self.logger.info(f"Route has {len(hand_holds)} hand holds and {len(foot_holds)} foot holds")
+            logger.info(f"Route has {len(hand_holds)} hand holds and {len(foot_holds)} foot holds")
 
     def _set_hold_type(self, hold_type: HoldType):
         self.hold_viewer.current_hold_type = hold_type
