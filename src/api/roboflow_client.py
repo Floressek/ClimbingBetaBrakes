@@ -58,36 +58,7 @@ class RoboflowClient:
         self.logger.info(f"Detected {len(result['predictions'])} holds on the image.")
         return result
 
-    # def visualize_detections(self, image_path: Path, result: dict, output_path: Path) -> None:
-    #     """
-    #     Visualize the detected holds on the climbing route image.
-    #
-    #     Args:
-    #         image_path (Path): Path to the image with the climbing route
-    #         result (dict): Detected holds with their coordinates (API response)
-    #         output_path (Path): Path to save the output image
-    #     """
-    #     self.logger.info(f"Visualizing detected holds on the image: {image_path}")
-    #
-    #     image = cv2.imread(str(image_path))
-    #     detections = sv.Detections.from_inference(result) # yep the from_inference method works
-    #
-    #     # Annotators for labels and masks
-    #     label_annotator = sv.LabelAnnotator()
-    #     mask_annotator = sv.MaskAnnotator()
-    #
-    #     # Overlaping labels and masks on the image
-    #     annotated_image = mask_annotator.annotate(scene=image, detections=detections)
-    #     # labels = ["hold"] * len(result["predictions"])
-    #     labels = [f"hold {i+1}" for i in range(len(result["predictions"]))] # numerated version of the labels
-    #     annotated_image = label_annotator.annotate(
-    #         scene=annotated_image,
-    #         labels=labels,
-    #         detections=detections
-    #     )
-    #
-    #     # Save the output image
-    #     cv2.imwrite(str(output_path), annotated_image)
+
     def visualize_detections(self, image_path: Path, result: dict, output_path: Path) -> None:
         """
         Visualize the detected holds on the climbing route image.

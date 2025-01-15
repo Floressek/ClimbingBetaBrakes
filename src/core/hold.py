@@ -146,7 +146,7 @@ class Hold:
         polygon = self.polygon
 
         if polygon:
-            logger.debug("Checking if point is within the hold.")
+            # logger.debug("Checking if point is within the hold.")
             return polygon.contains(point)
         else:
             # If no polygon is available, we use brute rectangle check

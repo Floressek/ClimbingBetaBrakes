@@ -1,98 +1,188 @@
 from PyQt5.QtWidgets import (
-    QWidget, QHBoxLayout, QVBoxLayout, QPushButton, QLabel, QButtonGroup, QComboBox, QSpacerItem, QSizePolicy
+    QWidget, QHBoxLayout, QPushButton, QLabel, QButtonGroup,
+    QComboBox, QFrame, QSizePolicy
 )
 from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QIcon, QFont
 
 
 class RouteToolbar(QWidget):
-    """
-    Widget for displaying the toolbar for creating routes.
-
-    Includes buttons for:
-    1. Creating a new route
-    2. Saving the current route
-    3. Switching between hands and feet modes
-    4. Editing route properties like arrows and grades
-    """
-
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
         self.setup_ui()
 
     def setup_ui(self) -> None:
-        """
-        Set up the user interface for the toolbar with even alignment.
-        """
         # Main layout
         layout = QHBoxLayout(self)
-        layout.setSpacing(10)  # Add spacing between elements
-        layout.setContentsMargins(15, 15, 15, 15)
+        layout.setSpacing(16)
+        layout.setContentsMargins(20, 12, 20, 12)
 
-        # Section 1: Route controls
-        self.new_route_button = QPushButton("New Route")
-        self.save_route_button = QPushButton("Save Route")
-        self.save_route_button.setEnabled(False)  # Initially disabled
-        layout.addWidget(self.new_route_button)
-        layout.addWidget(self.save_route_button)
+        # Route Controls Group
+        route_group = self.create_button_group([
+            ("New Route", "plus.png", False),
+            ("Save Route", "save.png", False)
+        ])
+        self.new_route_button = route_group.findChild(QPushButton, "New Route")
+        self.save_route_button = route_group.findChild(QPushButton, "Save Route")
+        self.save_route_button.setEnabled(True)
+        layout.addWidget(route_group)
 
-        # Vertical divider (spacer to ensure equal spacing)
-        layout.addSpacerItem(QSpacerItem(20, 0, QSizePolicy.Expanding, QSizePolicy.Minimum))
+        layout.addWidget(self.create_vertical_separator())
 
-        # Section 2: Mode selection (hands/feet)
+        # Mode Selection Group
         mode_group = QButtonGroup(self)
-        self.hands_button = QPushButton("Hand")
-        self.hands_button.setCheckable(True)
-        self.feet_button = QPushButton("Feet")
-        self.feet_button.setCheckable(True)
+        mode_frame = self.create_button_group([
+            ("Hands", "hand.png", True),
+            ("Feet", "foot.png", True)
+        ])
+        self.hands_button = mode_frame.findChild(QPushButton, "Hands")
+        self.feet_button = mode_frame.findChild(QPushButton, "Feet")
         mode_group.addButton(self.hands_button)
         mode_group.addButton(self.feet_button)
-        self.hands_button.setChecked(True)  # Default to hands mode
+        self.hands_button.setChecked(True)
+        layout.addWidget(mode_frame)
 
-        # Add mode buttons in a neat row
-        layout.addWidget(self.hands_button)
-        layout.addWidget(self.feet_button)
+        layout.addWidget(self.create_vertical_separator())
 
-        # Vertical divider (spacer to ensure equal spacing)
-        layout.addSpacerItem(QSpacerItem(20, 0, QSizePolicy.Expanding, QSizePolicy.Minimum))
+        # Edit Controls Group
+        edit_group = self.create_button_group([
+            ("Edit Curves", "curve.png", True),
+            ("Show Numbers", "numbers.png", True)
+        ])
+        self.curve_edit_button = edit_group.findChild(QPushButton, "Edit Curves")
+        self.show_numbers = edit_group.findChild(QPushButton, "Show Numbers")
+        layout.addWidget(edit_group)
 
-        # Section 3: Editing options
-        self.show_numbers = QPushButton("Show Numbers")
-        self.show_numbers.setCheckable(True)
-        self.edit_arrows = QPushButton("Edit Arrows")
-        self.edit_arrows.setCheckable(True)
-        layout.addWidget(self.show_numbers)
-        layout.addWidget(self.edit_arrows)
+        layout.addWidget(self.create_vertical_separator())
 
-        # Vertical divider (spacer to ensure equal spacing)
-        layout.addSpacerItem(QSpacerItem(20, 0, QSizePolicy.Expanding, QSizePolicy.Minimum))
+        # Grade Selector Group
+        grade_frame = QFrame()
+        grade_frame.setObjectName("toolbarGroup")
+        grade_layout = QHBoxLayout(grade_frame)
+        grade_layout.setContentsMargins(12, 8, 12, 8)
+        grade_layout.setSpacing(8)
 
-        # Section 4: Grade selector
+        grade_label = QLabel("Grade:")
+        grade_label.setObjectName("toolbarLabel")
+
         self.grade_selector = QComboBox()
-        self.grade_selector.addItems(["4a", "4b", "4c", "5a", "5b", "5c", "6a", "6a+", "6b", "6b+", "6c", "6c+", "7a"])
-        layout.addWidget(QLabel("Route Grade:"))
-        layout.addWidget(self.grade_selector)
+        self.grade_selector.addItems([
+            "4a", "4b", "4c", "5a", "5b", "5c",
+            "6a", "6a+", "6b", "6b+", "6c", "6c+",
+            "7a", "7a+", "7b", "7b+"
+        ])
+        self.grade_selector.setObjectName("gradeSelector")
 
-        # Final stretchable spacer to align everything to the left
+        grade_layout.addWidget(grade_label)
+        grade_layout.addWidget(self.grade_selector)
+        layout.addWidget(grade_frame)
+
+        # Add final stretch
         layout.addStretch()
 
-        # Styling for consistency
+        self.apply_styles()
+
+    def create_button_group(self, buttons):
+        """Create a group of buttons with consistent styling"""
+        frame = QFrame()
+        frame.setObjectName("toolbarGroup")
+        layout = QHBoxLayout(frame)
+        layout.setContentsMargins(12, 8, 12, 8)
+        layout.setSpacing(8)
+
+        for text, icon, checkable in buttons:
+            btn = QPushButton(text)
+            btn.setObjectName(text)
+            if icon:
+                btn.setIcon(QIcon(f"icons/{icon}"))
+            btn.setCheckable(checkable)
+            layout.addWidget(btn)
+
+        return frame
+
+    def create_vertical_separator(self):
+        """Create a vertical separator line"""
+        separator = QFrame()
+        separator.setFrameShape(QFrame.VLine)
+        separator.setFrameShadow(QFrame.Sunken)
+        separator.setObjectName("separator")
+        separator.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Expanding)
+        return separator
+
+    def apply_styles(self):
+        """Apply modern styling to all components"""
         self.setStyleSheet("""
+            QWidget {
+                font-family: 'Segoe UI', Arial, sans-serif;
+            }
+
+            #toolbarGroup {
+                background: rgba(255, 255, 255, 0.7);
+                border: 1px solid #e0e0e0;
+                border-radius: 6px;
+            }
+
             QPushButton {
-                padding: 5px 10px;
-                font-size: 14px;
+                padding: 8px 16px;
+                font-size: 13px;
+                border: none;
+                background: transparent;
+                border-radius: 4px;
+                color: #333333;
+                min-width: 80px;
             }
-            QLabel {
-                font-weight: bold;
-                font-size: 14px;
+
+            QPushButton:hover {
+                background: rgba(0, 0, 0, 0.05);
             }
-            QComboBox {
-                font-size: 14px;
-                padding: 5px;
+
+            QPushButton:pressed {
+                background: rgba(0, 0, 0, 0.1);
+            }
+
+            QPushButton:checked {
+                background: #e3f2fd;
+                color: #1976d2;
+            }
+
+            QPushButton:disabled {
+                color: #999999;
+                background: transparent;
+            }
+
+            QPushButton:checked:hover {
+                background: #bbdefb;
+            }
+
+            #separator {
+                color: #e0e0e0;
+                margin: 0px 8px;
+            }
+
+            #toolbarLabel {
+                font-size: 13px;
+                color: #555555;
+                margin-right: 4px;
+            }
+
+            #gradeSelector {
+                padding: 6px 24px 6px 12px;
+                border: 1px solid #e0e0e0;
+                border-radius: 4px;
+                min-width: 100px;
+                background: white;
+                font-size: 13px;
+            }
+
+            #gradeSelector:hover {
+                border-color: #bbbbbb;
+            }
+
+            #gradeSelector:focus {
+                border-color: #2196f3;
             }
         """)
 
     def enable_route_editing(self):
-        """
-        Enable the route editing functionality.
-        """
+        """Enable route editing functionality"""
         self.save_route_button.setEnabled(True)

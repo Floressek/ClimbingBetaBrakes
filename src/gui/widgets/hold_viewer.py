@@ -2,6 +2,8 @@ from PyQt5.QtWidgets import QWidget
 from PyQt5.QtGui import QPainter, QColor, QPen, QPixmap, QPainterPath
 from PyQt5.QtCore import Qt, QPoint, QSize
 from typing import List, Optional
+
+from src.core.connection import Connection
 from src.core.hold import Hold
 from src.core.movement_type import HoldType
 from src.utils.logger import setup_logger
@@ -25,17 +27,22 @@ class HoldViewer(QWidget):
         super().__init__(parent)  # Why super because it is a subclass of QWidget
         self.next_hand_order = 0  # Counter for the order of the next hand in the route
         self.next_foot_order = 0  # Counter for the order of the next hand in the route
+        self.next_hold_order = 0  # Counter for the order of the next hold in the route, old
+        self.scale_factor = 1.0
         self.current_hold_type = HoldType.HAND  # Default hold type
         self.holds: List[Hold] = []
-        self.next_hold_order = 0  # Counter for the order of the next hold in the route
+        self.scaled_points_cache = {}
+        self.arrow_points = {}  # Arrow ID -> dict that contains control points, not used
         self.wall_image: Optional[QPixmap] = None  # Image of the climbing wall
         self.setMouseTracking(True)
-        self.scaled_points_cache = {}
-        self.scale_factor = 1.0
         self.arrow_edit_mode = False
-        self.selected_arrow = None
-        self.arrow_points = {}  # Arrow ID -> dict that contains control points
         self.show_numbers = False
+        self.selected_arrow = None
+
+        self.current_mode = "normal"  # Default mode
+        self.dragged_connection = None # Connection being dragged
+        self.drag_point = None  # Point on the connection being dragged
+        self.active_connection = None  # Connection being edited
 
     def load_image(self, image_path: str) -> None:
         """Loads the climbing wall image"""
@@ -85,7 +92,7 @@ class HoldViewer(QWidget):
             # Centrujemy obraz w widgecie
             x = (self.width() - scaled_image.width()) // 2
             y = (self.height() - scaled_image.height()) // 2
-            logger.debug(f"Drawing wall image at position ({x}, {y})")
+            logger.debug(f"Drawing wall image at position ({x}, {y})") # TODO fixme shows 136, 0 every time
             painter.drawPixmap(x, y, scaled_image)
         else:
             logger.debug("No wall image to draw")
@@ -95,11 +102,10 @@ class HoldViewer(QWidget):
             # logger.debug(f"Drawing hold: {hold}")
             self.draw_hold(painter, hold)
 
-
         # # Draw route connections
         # selected_holds = [h for h in self.holds if h.is_selected]
         # selected_holds.sort(key=lambda h: h.order_in_route)
-        # logger.debug(f"Selected holds for route connections: {selected_holds}")
+        # logger.debug(f"Selected holds for route connections: {selected_holds}") #TODO add for hands and feet selected holds
         self.draw_route_connections(painter, self.holds)
 
     def get_image_coordinates(self, widget_x: float, widget_y: float) -> tuple[float, float]:
@@ -203,130 +209,105 @@ class HoldViewer(QWidget):
                     path.lineTo(point)
                 path.lineTo(points[0])
 
-            # Wypełnienie z przezroczystością
-            if hold.is_hand_selected:  # Używamy nowych flag!
-                painter.fillPath(path, QColor(255, 165, 0, 30))  # Orange z przezroczystością
+            # Filler color for selected holds
+            if hold.is_hand_selected:  # new color for hands
+                painter.fillPath(path, QColor(255, 165, 0, 30))  # Orange with transparency
             elif hold.is_foot_selected:
-                painter.fillPath(path, QColor(255, 0, 0, 30))  # Red z przezroczystością
+                painter.fillPath(path, QColor(255, 0, 0, 30))  # Red with transparency
             else:
                 painter.fillPath(path, QColor(200, 200, 200, 30))  # Default color
 
             painter.drawPath(path)
 
-    def draw_hold_old(self, painter: QPainter, hold: Hold) -> None:  # FIXME: Delete this method
-        """
-        Draws a single hold on the widget.
-        """
-        # Set the color based on whether the hold is selected
-        color = QColor(0, 255, 0) if hold.is_selected else QColor(200, 200, 200)
-
-        # Draw the hold contour
-        pen = QPen(color, 2)
-        painter.setPen(pen)
-
-        # Draw the hold contour points
-        if hold.contour_points:
-            # Calculate the scaled coordinates of the hold points
-            scaled_points = []
-            for p in hold.contour_points:
-                scaled_x, scaled_y = self.get_scaled_coordinates(p.x, p.y)
-                scaled_points.append(QPoint(int(scaled_x), int(scaled_y)))  # Close the polygon
-            painter.drawPolyline(scaled_points)
-            # logger.debug(f"Drawing hold contour: {scaled_points}")
-        else:
-            logger.warning("No contour points available for hold")
-            # Jeśli nie ma punktów konturu, narysuj okrąg
-            scaled_x, scaled_y = self.get_scaled_coordinates(hold.x, hold.y)
-            radius = 10  # możemy też przeskalować promień jeśli potrzeba
-            painter.drawEllipse(QPoint(int(scaled_x), int(scaled_y)), radius, radius)
-            logger.debug(f"Drawing hold circle at position ({scaled_x}, {scaled_y})")
-
-    # def draw_numbered_arrow(self, painter: QPainter, hold1: Hold, hold2: Hold, number: int, color: QColor) -> None:
-    #     """
-    #     Draws an arrow between two holds with a number on it.
-    #     """
-    #     # Calculate the scaled coordinates of the hold points
-    #     x1, y1 = self.get_scaled_coordinates(hold1.x, hold1.y)
-    #     x2, y2 = self.get_scaled_coordinates(hold2.x, hold2.y)
-    #
-    #     # Draw the arrow
-    #     pen = QPen(color, 2)
-    #     painter.setPen(pen)
-    #     painter.drawLine(int(x1), int(y1), int(x2), int(y2))
-    #
-    #     if self.show_numbers:
-    #         mid_x = (x1 + x2) / 2
-    #         mid_y = (y1 + y2) / 2
-    #         painter.drawText(mid_x, mid_y, str(number))
-    #
-    # def draw_simple_arrow(self, painter: QPainter, hold1: Hold, hold2: Hold, color: QColor) -> None:
-    #     """
-    #     Draws a simple arrow between two holds.
-    #     """
-    #     # Calculate the scaled coordinates of the hold points
-    #     x1, y1 = self.get_scaled_coordinates(hold1.x, hold1.y)
-    #     x2, y2 = self.get_scaled_coordinates(hold2.x, hold2.y)
-    #
-    #     # Draw the arrow
-    #     pen = QPen(color, 2)
-    #     painter.setPen(pen)
-    #     painter.drawLine(int(x1), int(y1), int(x2), int(y2))
 
     def draw_route_connections(self, painter: QPainter, selected_holds: List[Hold]) -> None:
         """
         Draws connections between the selected holds to represent the climbing route.
         """
-        # # Set the color for the route connections
-        # color = QColor(0, 255, 0)
-        # pen = QPen(color, 2)
-        # painter.setPen(pen)
 
-        # # Draw the connections between the selected holds
-        # for i in range(len(selected_holds) - 1):
-        #     hold1 = selected_holds[i]
-        #     hold2 = selected_holds[i + 1]
-        #
-        #     # Color based on hold type
-        #     color = QColor(255, 0, 0) if hold1.hold_type == HoldType.HAND else QColor(255, 165, 0)  # COLOR OF LINES
-        #
-        #     # x1, y1 = self.get_scaled_coordinates(hold1.x, hold1.y)
-        #     # x2, y2 = self.get_scaled_coordinates(hold2.x, hold2.y)
-        #     # painter.drawLine(int(x1), int(y1), int(x2), int(y2))
-        #
-        #     # Strzałka z numeracją
-        #     if self.show_numbers:
-        #         self.draw_numbered_arrow(painter, hold1, hold2, i + 1, color)
-        #     else:
-        #         self.draw_simple_arrow(painter, hold1, hold2, color)
-
-
+        # Draw connections between the selected hand holds
         hand_holds = [h for h in self.holds if h.is_hand_selected]
         hand_holds.sort(key=lambda h: h.hand_order if h.hand_order is not None else float('inf'))
-        if len(hand_holds) > 1:
-            painter.setPen(QPen(QColor(255, 165, 0), 2))  # niebieski
+
+        if len(hand_holds) >= 2:
+            painter.setPen(QPen(QColor(255, 165, 0), 2))  # orange
             for i in range(len(hand_holds) - 1):
                 hold1, hold2 = hand_holds[i], hand_holds[i + 1]
-                if hold1.hand_order is not None and hold2.hand_order is not None:  # sprawdzamy czy mają kolejność
-                    x1, y1 = self.get_scaled_coordinates(hold1.x, hold1.y)
-                    x2, y2 = self.get_scaled_coordinates(hold2.x, hold2.y)
-                    painter.drawLine(int(x1), int(y1), int(x2), int(y2))
+                if hold1.hand_order is not None and hold2.hand_order is not None:  # check if they have order
+                    connection = Connection(hold1, hold2)
+                    self.draw_single_connection(painter, connection)
 
-        # Rysuj trasę dla nóg (zielona)
+                    # x1, y1 = self.get_scaled_coordinates(hold1.x, hold1.y)
+                    # x2, y2 = self.get_scaled_coordinates(hold2.x, hold2.y)
+                    # painter.drawLine(int(x1), int(y1), int(x2), int(y2))
+
+        # Draw connections between the selected foot holds
         foot_holds = [h for h in self.holds if h.is_foot_selected]
         foot_holds.sort(key=lambda h: h.foot_order if h.foot_order is not None else float('inf'))
 
-        if len(foot_holds) > 1:
-            painter.setPen(QPen(QColor(255, 0, 0), 2))  # zielony
+        if len(foot_holds) >= 2:
+            painter.setPen(QPen(QColor(255, 0, 0), 2))  # red
             for i in range(len(foot_holds) - 1):
                 hold1, hold2 = foot_holds[i], foot_holds[i + 1]
-                if hold1.foot_order is not None and hold2.foot_order is not None:  # sprawdzamy czy mają kolejność
-                    x1, y1 = self.get_scaled_coordinates(hold1.x, hold1.y)
-                    x2, y2 = self.get_scaled_coordinates(hold2.x, hold2.y)
-                    painter.drawLine(int(x1), int(y1), int(x2), int(y2))
+                if hold1.foot_order is not None and hold2.foot_order is not None:  # check if they have order
+                    connection = Connection(hold1, hold2)
+                    self.draw_single_connection(painter, connection)
+
+                    # x1, y1 = self.get_scaled_coordinates(hold1.x, hold1.y)
+                    # x2, y2 = self.get_scaled_coordinates(hold2.x, hold2.y)
+                    # painter.drawLine(int(x1), int(y1), int(x2), int(y2))
+
+    def draw_single_connection(self, painter: QPainter, connection: Connection) -> None:
+        """
+        Draws a single connection between two holds.
+        """
+        x1, y1 = self.get_scaled_coordinates(connection.hold1.x, connection.hold1.y)
+        x2, y2 = self.get_scaled_coordinates(connection.hold2.x, connection.hold2.y)
+
+        if connection.is_curved:
+            if not connection.control_points:
+                # Calculate the scaled control point perpendicularly to the line between the holds
+                mid_x = (x1 + x2) / 2
+                mid_y = (y1 + y2) / 2
+                dx = -(y2 - y1) * 0.2  # perpendicularly placed vector
+                dy = (x2 - x1) * 0.2
+                connection.control_points = (mid_x + dx, mid_y + dy)
+
+
+            # Get the scaled control point
+            control_x, control_y = connection.control_points
+
+            # Draw the curved connection Bezier curve
+            path = QPainterPath()
+            path.moveTo(x1, y1)
+            path.quadTo(control_x, control_y, x2, y2)
+            painter.drawPath(path)
+
+            # Draw control point if in edit mode
+            if self.current_mode == "curve_edit":
+                painter.setPen(QPen(Qt.red, 1))
+                painter.drawEllipse(
+                    int(control_x - 5),
+                    int(control_y - 5),
+                    10, 10
+                )
+        else:
+            # Draw straight line
+            painter.drawLine(int(x1), int(y1), int(x2), int(y2))
+
+        # Draw number if exists
+        if connection.number is not None:
+            mid_x = (x1 + x2) / 2
+            mid_y = (y1 + y2) / 2
+            painter.drawText(
+                int(mid_x - 10),
+                int(mid_y - 10),
+                str(connection.number)
+            )
 
     def mousePressEvent(self, event) -> None:
         """
-        Handles mouse click events - selecting and deselecting holds.
+        Handles mouse click events - selecting and deselecting holds. Also is used for curve editing.
         When a user clicks on a hold:
         - if the hold wasn't selected - selects it and gives it the next order number
         - if the hold was selected - deselects it
@@ -338,29 +319,51 @@ class HoldViewer(QWidget):
         if not self.rect().contains(event.pos()):
             return  # Ignore clicks outside the widget
 
+        # New curve editing mode
+        if self.current_mode == "curve_edit":
+            # Get active connections from current holds
+            hand_holds = [h for h in self.holds if h.is_hand_selected]
+            foot_holds = [h for h in self.holds if h.is_foot_selected]
+
+            active_connections = [] # List of active connections
+
+            # Add hand connections
+            for i in range(len(hand_holds) - 1):
+                if hand_holds[i].hand_order is not None and hand_holds[i + 1].hand_order is not None:
+                    active_connections.append(Connection(hand_holds[i], hand_holds[i + 1]))
+
+            # Add foot connections
+            for i in range(len(foot_holds) - 1):
+                if foot_holds[i].foot_order is not None and foot_holds[i + 1].foot_order is not None:
+                    active_connections.append(Connection(foot_holds[i], foot_holds[i + 1]))
+
+            # Check for clicks on control points or connection midpoints
+            for connection in active_connections:
+                if connection.control_points:
+                    x, y = self.get_scaled_coordinates(*connection.control_points)
+                    dist = ((event.pos().x() - x) ** 2 + (event.pos().y() - y) ** 2) ** 0.5
+                    if dist <= 10:  # 10px radius for clicking
+                        self.dragged_connection = connection
+                        self.drag_point = 'control'
+                        return
+
+                # Check midpoint click
+                if connection.midpoint:
+                    mid_x, mid_y = self.get_scaled_coordinates(*connection.midpoint)
+                    dist = ((event.pos().x() - mid_x) ** 2 + (event.pos().y() - mid_y) ** 2) ** 0.5
+                    if dist <= 10:
+                        self.active_connection = connection
+                        if event.button() == Qt.RightButton:
+                            connection.is_curved = not connection.is_curved
+                        self.update()
+                        return
+
+
         widget_x = event.pos().x()
         widget_y = event.pos().y()
 
         # Convert click coordinates to image coordinates
         image_x, image_y = self.get_image_coordinates(widget_x, widget_y)
-
-        # Old for only one type of hold / lines ;)
-        # for hold in self.holds:
-        #     if hold.contains_point(image_x, image_y):
-        #         if not hold.is_selected:
-        #             hold.is_selected = True
-        #             hold.order_in_route = self.next_hold_order
-        #             hold.hold_type = self.current_hold_type  # MainWindow -> HoldViewer -> Hold
-        #             self.next_hold_order += 1
-        #         else:
-        #             # Disable the hold selection
-        #             hold.is_selected = False
-        #             hold.order_in_route = None
-        #             # Update the order of the remaining holds
-        #             self._update_hold_order()
-        #
-        #         self.update()
-        #         break
 
         for hold in self.holds:
             if hold.contains_point(image_x, image_y):
@@ -386,6 +389,12 @@ class HoldViewer(QWidget):
                 self.update()
                 break
 
+    def _set_mode(self, mode: str) -> None:
+        """Sets the current mode of the hold viewer."""
+        self.current_mode = mode
+        logger.info(f"Set mode to {mode}")
+        self.update()
+
     def _update_hand_order(self) -> None:
         """Updates the order of hand holds."""
         selected_hand_holds = [h for h in self.holds if h.is_hand_selected]
@@ -408,15 +417,161 @@ class HoldViewer(QWidget):
 
         self.next_foot_order = len(selected_foot_holds)
 
-    # def _update_hold_order(self) -> None:
-    #     """
-    #     Updates the order of the holds in the route after a hold has been deselected.
-    #     """
-    #     selected_holds = [h for h in self.holds if h.is_selected]
-    #     selected_holds.sort(key=lambda h: h.order_in_route if h.order_in_route is not None else float(
-    #         'inf'))  # Sort the selected holds by their order in the route
+
+########################## FUN #################################################
+    # def mousePressEvent(self, event) -> None:
+    #     """Handle mouse press events for holds, lines, and curves."""
+    #     logger.debug(f"Mouse pressed at widget coordinates: ({event.pos().x()}, {event.pos().y()})")
     #
-    #     for i, hold in enumerate(selected_holds):
-    #         hold.order_in_route = i
+    #     # Sprawdzenie, czy kliknięcie znajduje się w obrębie widgetu
+    #     if not self.wall_image or not self.rect().contains(event.pos()):
+    #         logger.debug("Mouse press ignored: Outside of wall image or widget.")
+    #         return
     #
-    #     self.next_hold_order = len(selected_holds)
+    #     widget_x, widget_y = event.pos().x(), event.pos().y()
+    #     image_x, image_y = self.get_image_coordinates(widget_x, widget_y)
+    #
+    #     # Tryb edycji krzywych
+    #     if self.current_mode == "curve_edit":
+    #         logger.debug("Current mode: curve_edit")
+    #         for connection in self.get_active_connections():
+    #             # Punkt kontrolny
+    #             if connection.is_curved and connection.control_points:
+    #                 control_x, control_y = self.get_scaled_coordinates(*connection.control_points)
+    #                 dist = ((widget_x - control_x) ** 2 + (widget_y - control_y) ** 2) ** 0.5
+    #                 if dist <= 10:
+    #                     logger.info("Clicked on curve control point.")
+    #                     self.dragged_connection = connection
+    #                     self.drag_point = 'control'
+    #                     return
+    #
+    #             # Punkt środkowy (przełączanie prosty/krzywy)
+    #             mid_x, mid_y = self.get_scaled_coordinates(*connection.midpoint)
+    #             dist = ((widget_x - mid_x) ** 2 + (widget_y - mid_y) ** 2) ** 0.5
+    #             if dist <= 10:
+    #                 logger.info("Clicked on midpoint. Toggling curve/straight line.")
+    #                 if event.button() == Qt.RightButton:
+    #                     connection.is_curved = not connection.is_curved
+    #                     connection.control_points = None if not connection.is_curved else connection.control_points
+    #                 else:
+    #                     self.active_connection = connection
+    #                 self.update()
+    #                 return
+    #
+    #             # Punkty końcowe i linie
+    #             x1, y1 = self.get_scaled_coordinates(connection.hold1.x, connection.hold1.y)
+    #             x2, y2 = self.get_scaled_coordinates(connection.hold2.x, connection.hold2.y)
+    #
+    #             if ((widget_x - x1) ** 2 + (widget_y - y1) ** 2) ** 0.5 <= 10:
+    #                 logger.info("Clicked on line start point.")
+    #                 self.dragged_connection = connection
+    #                 self.drag_point = 'start'
+    #                 return
+    #             elif ((widget_x - x2) ** 2 + (widget_y - y2) ** 2) ** 0.5 <= 10:
+    #                 logger.info("Clicked on line end point.")
+    #                 self.dragged_connection = connection
+    #                 self.drag_point = 'end'
+    #                 return
+    #
+    #             distance = self._point_to_line_distance(widget_x, widget_y, x1, y1, x2, y2)
+    #             if distance <= 10:
+    #                 logger.info("Clicked near a line. Dragging entire line.")
+    #                 self.dragged_connection = connection
+    #                 self.drag_point = 'line'
+    #                 self.start_drag_pos = (widget_x, widget_y)
+    #                 return
+    #
+    #     # Zaznaczanie chwytów (domyślna logika)
+    #     for hold in self.holds:
+    #         if hold.contains_point(image_x, image_y):
+    #             logger.info(f"Clicked on hold: {hold.id}")
+    #             if self.current_hold_type == HoldType.HAND:
+    #                 if not hold.is_hand_selected:
+    #                     hold.is_hand_selected = True
+    #                     hold.hand_order = self.next_hand_order
+    #                     self.next_hand_order += 1
+    #                 else:
+    #                     hold.is_hand_selected = False
+    #                     hold.hand_order = None
+    #                     self._update_hand_order()
+    #             elif self.current_hold_type == HoldType.FEET:
+    #                 if not hold.is_foot_selected:
+    #                     hold.is_foot_selected = True
+    #                     hold.foot_order = self.next_foot_order
+    #                     self.next_foot_order += 1
+    #                 else:
+    #                     hold.is_foot_selected = False
+    #                     hold.foot_order = None
+    #                     self._update_foot_order()
+    #             self.update()
+    #             return
+    #
+    #     logger.debug("Mouse press did not interact with any hold or connection.")
+    #
+    # def mouseMoveEvent(self, event) -> None:
+    #     """Handle dragging of lines, endpoints, and control points."""
+    #     if self.dragged_connection:
+    #         widget_x, widget_y = event.pos().x(), event.pos().y()
+    #         image_x, image_y = self.get_image_coordinates(widget_x, widget_y)
+    #         logger.debug(
+    #             f"Mouse moved to widget coordinates: ({widget_x}, {widget_y}), image coordinates: ({image_x}, {image_y})")
+    #
+    #         if self.drag_point == 'control':
+    #             logger.info("Dragging control point.")
+    #             self.dragged_connection.control_points = (image_x, image_y)
+    #         elif self.drag_point == 'start':
+    #             logger.info("Dragging start point.")
+    #             self.dragged_connection.hold1.x = image_x
+    #             self.dragged_connection.hold1.y = image_y
+    #         elif self.drag_point == 'end':
+    #             logger.info("Dragging end point.")
+    #             self.dragged_connection.hold2.x = image_x
+    #             self.dragged_connection.hold2.y = image_y
+    #         elif self.drag_point == 'line':
+    #             logger.info("Dragging entire line.")
+    #             dx = widget_x - self.start_drag_pos[0]
+    #             dy = widget_y - self.start_drag_pos[1]
+    #             dx_image, dy_image = dx / self.scale_factor, dy / self.scale_factor
+    #
+    #             self.dragged_connection.hold1.x += dx_image
+    #             self.dragged_connection.hold1.y += dy_image
+    #             self.dragged_connection.hold2.x += dx_image
+    #             self.dragged_connection.hold2.y += dy_image
+    #
+    #             self.start_drag_pos = (widget_x, widget_y)
+    #
+    #         self.update()
+    #     else:
+    #         logger.debug("Mouse moved with no active dragging.")
+    #
+    # def mouseReleaseEvent(self, event) -> None:
+    #     """Reset dragging state."""
+    #     if self.dragged_connection:
+    #         logger.info(f"Mouse released. Stopped dragging connection: {self.dragged_connection}")
+    #     else:
+    #         logger.debug("Mouse released with no active dragging.")
+    #     self.dragged_connection = None
+    #     self.drag_point = None
+    #
+    # def get_active_connections(self) -> List[Connection]:
+    #     """Return a list of active connections based on selected holds."""
+    #     connections = []
+    #     for holds, _ in [(self.holds, QColor(255, 165, 0)), (self.holds, QColor(255, 0, 0))]:
+    #         for i in range(len(holds) - 1):
+    #             if holds[i].hand_order is not None and holds[i + 1].hand_order is not None:
+    #                 connections.append(Connection(holds[i], holds[i + 1]))
+    #     return connections
+    #
+    # def _point_to_line_distance(self, px, py, x1, y1, x2, y2) -> float:
+    #     """Calculate the distance from a point to a line segment."""
+    #     line_mag = ((x2 - x1) ** 2 + (y2 - y1) ** 2) ** 0.5
+    #     if line_mag == 0:
+    #         return ((px - x1) ** 2 + (py - y1) ** 2) ** 0.5
+    #
+    #     u = ((px - x1) * (x2 - x1) + (py - y1) * (y2 - y1)) / (line_mag ** 2)
+    #     u = max(0, min(1, u))
+    #     ix = x1 + u * (x2 - x1)
+    #     iy = y1 + u * (y2 - y1)
+    #     return ((px - ix) ** 2 + (py - iy) ** 2) ** 0.5
+
+
