@@ -220,16 +220,120 @@
 #
 # if __name__ == '__main__':
 #     ImageUploadApp().run()
+import requests
+# # test.py
+# import sys
+# from PyQt5.QtWidgets import QApplication, QLabel
+# from PyQt5.QtGui import QMovie
+#
+# app = QApplication(sys.argv)
+# label = QLabel()
+# movie = QMovie(r"C:\Users\szyme\PycharmProjects\ClimbingBetaBrakes\src\gui\resources\loading.gif")
+# label.setMovie(movie)
+# movie.start()
+# label.show()
+# sys.exit(app.exec_())
 
-# test.py
-import sys
-from PyQt5.QtWidgets import QApplication, QLabel
-from PyQt5.QtGui import QMovie
 
-app = QApplication(sys.argv)
-label = QLabel()
-movie = QMovie(r"C:\Users\szyme\PycharmProjects\ClimbingBetaBrakes\src\gui\resources\loading.gif")
-label.setMovie(movie)
-movie.start()
-label.show()
-sys.exit(app.exec_())
+from O365 import Account
+import json
+from datetime import datetime, timedelta
+from msal import PublicClientApplication
+
+# Twoje dane z Azure Portal
+CLIENT_ID = "4156ca90-98a5-4230-ba59-7dc6cfd59237"
+# Ten secret musisz wygenerować w Azure Portal w sekcji "Certificates & secrets"
+CLIENT_SECRET = "98d46ce4-da00-4fa1-8bea-3baf3f395994"
+
+AUTHORITY = "https://login.microsoftonline.com/common"
+ENDPOINT = "https://graph.microsoft.com/v1.0"
+
+# Uprawnienia, których potrzebujemy
+SCOPES = [
+    'https://graph.microsoft.com/Mail.Read',
+    'offline_access'
+]
+
+
+def get_auth_app():
+    return PublicClientApplication(
+        CLIENT_ID,
+        authority=AUTHORITY
+    )
+
+
+def get_token():
+    app = get_auth_app()
+
+    # Próba użycia zapisanego tokenu
+    accounts = app.get_accounts()
+    if accounts:
+        token_result = app.acquire_token_silent(SCOPES, account=accounts[0])
+        if token_result:
+            return token_result
+
+    # Jeśli nie ma zapisanego tokenu, prosimy o zalogowanie
+    token_result = app.acquire_token_interactive(SCOPES)
+    return token_result
+
+
+def get_emails_by_date_range(token, start_date, end_date):
+    """
+    Pobiera maile z określonego zakresu dat
+    """
+    headers = {
+        'Authorization': f'Bearer {token["access_token"]}',
+        'Content-Type': 'application/json'
+    }
+
+    # Formatujemy daty do formatu ISO 8601
+    start_date_str = start_date.isoformat() + 'Z'
+    end_date_str = end_date.isoformat() + 'Z'
+
+    # Tworzymy filter query
+    filter_query = f"receivedDateTime ge {start_date_str} and receivedDateTime le {end_date_str}"
+
+    # Pobieramy maile
+    response = requests.get(
+        f"{ENDPOINT}/me/messages",
+        headers=headers,
+        params={
+            '$select': 'subject,sender,receivedDateTime,bodyPreview',
+            '$filter': filter_query,
+            '$orderby': 'receivedDateTime desc',
+            '$top': 50  # limit ilości maili
+        }
+    )
+
+    if response.status_code == 200:
+        emails = response.json().get('value', [])
+        for email in emails:
+            print(f"\nTemat: {email.get('subject', 'Brak tematu')}")
+            print(f"Od: {email.get('sender', {}).get('emailAddress', {}).get('address', 'Brak nadawcy')}")
+            print(f"Otrzymano: {email.get('receivedDateTime', 'Brak daty')}")
+            print(f"Podgląd: {email.get('bodyPreview', 'Brak podglądu')[:100]}...")
+
+        return emails
+    else:
+        print(f"Błąd podczas pobierania maili: {response.status_code}")
+        print(response.text)
+        return []
+
+
+if __name__ == "__main__":
+    print("Rozpoczynam proces autoryzacji...")
+    token = get_token()
+
+    if token:
+        print("Autoryzacja udana!")
+
+        # Przykład: pobierz maile z ostatnich 7 dni
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=7)
+
+        print(f"\nPobieram maile od {start_date.strftime('%Y-%m-%d')} do {end_date.strftime('%Y-%m-%d')}...")
+        emails = get_emails_by_date_range(token, start_date, end_date)
+
+        print(f"\nZnaleziono {len(emails)} maili.")
+    else:
+        print("Błąd autoryzacji")

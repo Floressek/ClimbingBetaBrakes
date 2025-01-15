@@ -155,7 +155,7 @@ class StartupWindow(QMainWindow):
         self.drop_label.setStyleSheet("""
             color: #666;
             border: 2px dashed #aaa;
-            padding: 20px;
+            padding: 140px 20px;
             border-radius: 10px;
         """)
         layout.addWidget(self.drop_label)
