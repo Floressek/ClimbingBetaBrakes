@@ -24,3 +24,15 @@ class RouteModel:
     difficulty: Optional[str] = None
     description: Optional[str] = None
     author: Optional[str] = None
+
+    @classmethod
+    def create(cls, name: str, hold_ids: List[UUID], difficulty: str, description: str, author: str):
+        return cls(
+            id=uuid4(),
+            name=name,
+            hold_ids=hold_ids,
+            created_at=datetime.now(),
+            difficulty=difficulty,
+            description=description,
+            author=author
+        )

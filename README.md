@@ -8,8 +8,14 @@ Climbing Route Creator is a mobile application that helps climbers create, share
 sequenceDiagram
     actor User
     participant App as Application
+    participant SW as StartupWindow
+    participant LW as LoadingWindow
+    participant DW as DetectionWorker
     participant MW as MainWindow
+    participant RID as RouteInfoDialog
     participant HV as HoldViewer
+    participant RR as RouteRepository
+    participant RIP as RouteImageProcessor
     participant RC as RoboflowClient
     participant API as Roboflow API
     participant Hold as Hold Objects
@@ -18,18 +24,29 @@ sequenceDiagram
     activate App
     
     App->>App: Initialize QApplication
+    App->>App: Initialize ProjectConfig
+    App->>RC: Initialize RoboflowClient
+    activate RC
     App->>MW: Create MainWindow
     activate MW
+    App->>SW: Create StartupWindow
+    activate SW
+    App->>LW: Create LoadingWindow
+    activate LW
     
     MW->>HV: Create HoldViewer
     activate HV
+    MW->>RR: Initialize RouteRepository
+    activate RR
     
-    App->>RC: Initialize RoboflowClient
-    activate RC
+    User->>SW: Upload Image
+    SW->>App: Image Uploaded Signal
+    App->>SW: Hide
+    App->>LW: Show
+    App->>DW: Create & Start Detection
+    activate DW
     
-    App->>HV: Load Wall Image
-    
-    App->>RC: Detect Holds
+    DW->>RC: Detect Holds
     RC->>API: API Request
     API-->>RC: Response with Detections
     
@@ -38,10 +55,10 @@ sequenceDiagram
         Hold-->>HV: Add Hold to Viewer
     end
     
-    HV->>HV: Update View
-    
-    RC-->>App: Detection Complete
-    deactivate RC
+    DW-->>App: Detection Complete Signal
+    deactivate DW
+    App->>LW: Hide
+    App->>MW: Show
     
     User->>HV: Click on Hold
     activate HV
@@ -56,9 +73,34 @@ sequenceDiagram
     HV->>HV: Clear Route
     
     User->>MW: Click "Save Route"
+    MW->>RID: Show Dialog
+    activate RID
+    User->>RID: Enter Route Info
+    RID-->>MW: Route Info
+    deactivate RID
+    
     MW->>HV: Get Selected Holds
     HV-->>MW: Selected Holds
-    Note over MW: TODO: Save Route
+    
+    MW->>Hold: Generate UUIDs
+    MW->>RR: Save Route
+    RR->>RR: Create JSON
+    
+    MW->>RIP: Add Info Overlay
+    activate RIP
+    RIP->>RIP: Process Image
+    RIP-->>MW: Saved Image
+    deactivate RIP
+    
+    MW-->>User: Success Message
+    
+    deactivate RR
+    deactivate HV
+    deactivate MW
+    deactivate LW
+    deactivate SW
+    deactivate RC
+    deactivate App
 
 ```
 ```
@@ -70,70 +112,58 @@ climbing_route_creator/              # Główny katalog projektu
 │   │
 │   ├── api/                       # Moduł komunikacji z Roboflow
 │   │   ├── __init__.py
-│   │   ├── models.py             # Klasy reprezentujące dane z API (HoldPrediction, Point)
-│   │   ├── roboflow_client.py    # Klient API Roboflow
-│   │   └── exceptions.py         # Własne wyjątki dla API
+│   │   ├── models.py             # Klasy reprezentujące dane z API
+│   │   └── roboflow_client.py    # Klient API Roboflow
 │   │
 │   ├── core/                      # Logika biznesowa aplikacji
 │   │   ├── __init__.py
 │   │   ├── hold.py              # Reprezentacja chwytu w aplikacji
-│   │   ├── route.py             # Klasa reprezentująca trasę wspinaczkową
-│   │   └── route_manager.py     # Zarządzanie trasami (tworzenie, edycja)
+│   │   ├── connection.py        # Reprezentacja połączeń między chwytami
+│   │   └── movement_type.py     # Typy ruchów (hands/feet)
 │   │
 │   ├── gui/                       # Interfejs użytkownika
 │   │   ├── __init__.py
 │   │   ├── main_window.py       # Główne okno aplikacji
 │   │   ├── resources/           # Zasoby GUI (ikony, style)
 │   │   │   ├── icons/
-│   │   │   └── styles/
+│   │   │   ├── styles/
+│   │   │   └── loading.gif
+│   │   ├── workers/            # Wątki robocze
+│   │   │   ├── __init__.py
+│   │   │   └── detection_worker.py  # Wątek do detekcji chwytów
 │   │   └── widgets/             # Komponenty GUI
 │   │       ├── __init__.py
 │   │       ├── hold_viewer.py   # Widget do wyświetlania chwytów
-│   │       ├── route_editor.py  # Edytor trasy
-│   │       └── image_preview.py # Podgląd zdjęcia z zaznaczonymi chwytami
+│   │       ├── route_toolbar.py # Pasek narzędzi trasy
+│   │       ├── route_info_dialog.py # Dialog informacji o trasie
+│   │       ├── loading_window.py    # Okno ładowania
+│   │       └── startup_window.py    # Okno startowe
 │   │
 │   ├── utils/                     # Narzędzia pomocnicze
 │   │   ├── __init__.py
-│   │   ├── config.py           # Konfiguracja aplikacji (klucze API, ustawienia)
+│   │   ├── config.py           # Konfiguracja aplikacji
 │   │   ├── logger.py           # Konfiguracja logowania
-│   │   └── image_utils.py      # Narzędzia do przetwarzania obrazów
+│   │   └── route_image_processor.py # Przetwarzanie obrazów tras
 │   │
 │   └── storage/                   # Warstwa przechowywania danych
 │       ├── __init__.py
-│       ├── models/              # Modele danych do przechowywania
+│       ├── models/              # Modele danych
 │       │   ├── __init__.py
 │       │   └── route_model.py  # Model trasy do zapisu
-│       └── repositories/        # Implementacje zapisu danych
+│       └── repositories/        # Implementacje zapisu
 │           ├── __init__.py
-│           └── route_repository.py
+│           └── route_repository.py # Repozytorium tras
 │
-├── tests/                         # Testy
-│   ├── __init__.py
-│   ├── conftest.py              # Konfiguracja testów
-│   ├── test_api/               # Testy modułu API
-│   │   ├── __init__.py
-│   │   ├── test_roboflow_client.py
-│   │   └── test_models.py
-│   ├── test_core/             # Testy logiki biznesowej
-│   └── test_gui/              # Testy interfejsu
+├── data/                          # Dane aplikacji
+│   ├── routes/                   # Zapisane trasy (JSON)
+│   ├── images/                   # Obrazy ścian
+│   └── exports/                  # Wygenerowane obrazy z trasami
 │
-├── examples/                      # Przykładowe zdjęcia i trasy
-│   ├── images/
-│   └── routes/
+├── logs/                          # Logi aplikacji
 │
-├── docs/                          # Dokumentacja
-│   ├── api.md                   # Dokumentacja API
-│   ├── user_guide.md           # Przewodnik użytkownika
-│   └── development.md          # Instrukcje dla developerów
-│
-├── requirements/                  # Zależności projektu
-│   ├── base.txt                # Podstawowe zależności
-│   ├── dev.txt                 # Zależności developerskie
-│   └── test.txt               # Zależności testowe
-│
-├── setup.py                      # Skrypt instalacyjny
-├── pyproject.toml               # Konfiguracja narzędzi Pythona
-├── README.md                    # Główna dokumentacja projektu
+├── setup.py                       # Skrypt instalacyjny
+├── pyproject.toml                # Konfiguracja narzędzi
+├── README.md                     # Dokumentacja projektu
 └── .gitignore
 ```
 
