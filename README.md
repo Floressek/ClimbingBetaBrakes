@@ -196,7 +196,9 @@ source venv/bin/activate  # On Windows use: venv\Scripts\activate
 
 3. Install dependencies:
 ```bash
-pip install -r requirements/base.txt
+pip install poetry
+poetry install
+poetry update
 ```
 
 4. Set up your Roboflow API key:
@@ -231,7 +233,9 @@ The project follows a modular architecture for maintainability and testability:
 
 For development, install additional dependencies:
 ```bash
-pip install -r requirements/dev.txt
+pip install poetry
+poetry install
+poetry update
 ```
 
 Run tests:
