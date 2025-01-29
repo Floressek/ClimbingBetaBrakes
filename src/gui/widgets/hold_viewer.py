@@ -92,7 +92,9 @@ class HoldViewer(QWidget):
             # Centrujemy obraz w widgecie
             x = (self.width() - scaled_image.width()) // 2
             y = (self.height() - scaled_image.height()) // 2
-            logger.debug(f"Drawing wall image at position ({x}, {y})") # TODO fixme shows 136, 0 every time
+            logger.debug(f"Widget size: {self.width()}x{self.height()}")
+            logger.debug(f"Scaled image size: {scaled_image.width()}x{scaled_image.height()}")
+            logger.debug(f"Original image size: {self.wall_image.width()}x{self.wall_image.height()}")
             painter.drawPixmap(x, y, scaled_image)
         else:
             logger.debug("No wall image to draw")
@@ -102,10 +104,7 @@ class HoldViewer(QWidget):
             # logger.debug(f"Drawing hold: {hold}")
             self.draw_hold(painter, hold)
 
-        # # Draw route connections
-        # selected_holds = [h for h in self.holds if h.is_selected]
-        # selected_holds.sort(key=lambda h: h.order_in_route)
-        # logger.debug(f"Selected holds for route connections: {selected_holds}") #TODO add for hands and feet selected holds
+        # Draw route connections
         self.draw_route_connections(painter, self.holds)
 
     def get_image_coordinates(self, widget_x: float, widget_y: float) -> tuple[float, float]:
@@ -269,9 +268,10 @@ class HoldViewer(QWidget):
                 # Calculate the scaled control point perpendicularly to the line between the holds
                 mid_x = (x1 + x2) / 2
                 mid_y = (y1 + y2) / 2
+                # Perpendicular vector used for control point
                 dx = -(y2 - y1) * 0.2  # perpendicularly placed vector
                 dy = (x2 - x1) * 0.2
-                connection.control_points = (mid_x + dx, mid_y + dy)
+                connection.control_points = (mid_x + dx, mid_y + dy) # control point is the midpoint of the line between the holds
 
 
             # Get the scaled control point
@@ -280,7 +280,7 @@ class HoldViewer(QWidget):
             # Draw the curved connection Bezier curve
             path = QPainterPath()
             path.moveTo(x1, y1)
-            path.quadTo(control_x, control_y, x2, y2)
+            path.quadTo(control_x, control_y, x2, y2) # quadTo is a quadratic Bezier curve
             painter.drawPath(path)
 
             # Draw control point if in edit mode
