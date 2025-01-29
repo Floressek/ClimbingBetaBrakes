@@ -7,7 +7,7 @@ Climbing Route Creator is a mobile application that helps climbers create, share
 ```mermaid
 sequenceDiagram
     actor User
-    participant App as Application
+    participant App as ClimbingApp
     participant SW as StartupWindow
     participant LW as LoadingWindow
     participant DW as DetectionWorker
@@ -27,22 +27,29 @@ sequenceDiagram
     App->>App: Initialize ProjectConfig
     App->>RC: Initialize RoboflowClient
     activate RC
-    App->>MW: Create MainWindow
-    activate MW
-    App->>SW: Create StartupWindow
-    activate SW
-    App->>LW: Create LoadingWindow
-    activate LW
     
+    # Główna różnica - MainWindow jest tworzone przed StartupWindow
+    App->>MW: Create MainWindow (hidden)
+    activate MW
     MW->>HV: Create HoldViewer
     activate HV
     MW->>RR: Initialize RouteRepository
     activate RR
     
+    App->>SW: Create StartupWindow
+    activate SW
+    App->>LW: Create LoadingWindow
+    activate LW
+    
     User->>SW: Upload Image
-    SW->>App: Image Uploaded Signal
+    SW->>SW: Validate & Copy Image
+    SW->>App: image_uploaded Signal
+    
     App->>SW: Hide
-    App->>LW: Show
+    App->>LW: Show & Start Animation
+    App->>MW: Set Current Image Path
+    MW->>HV: Load Image
+    
     App->>DW: Create & Start Detection
     activate DW
     
@@ -50,27 +57,23 @@ sequenceDiagram
     RC->>API: API Request
     API-->>RC: Response with Detections
     
+    # Hold objects są tworzone w DetectionWorker
     loop For each detection
-        RC->>Hold: Create Hold Object
-        Hold-->>HV: Add Hold to Viewer
+        DW->>Hold: Create Hold Object
     end
     
-    DW-->>App: Detection Complete Signal
+    DW-->>App: detection_completed Signal
+    DW-->>App: holds List
     deactivate DW
+    
+    App->>HV: Set Holds
     App->>LW: Hide
     App->>MW: Show
     
     User->>HV: Click on Hold
-    activate HV
     HV->>HV: Check Click Location
-    HV->>Hold: Update Selection State
-    Hold-->>HV: State Updated
+    HV->>HV: Update Hold Selection State
     HV->>HV: Update View
-    deactivate HV
-    
-    User->>MW: Click "New Route"
-    MW->>HV: Reset Hold Selections
-    HV->>HV: Clear Route
     
     User->>MW: Click "Save Route"
     MW->>RID: Show Dialog
@@ -79,20 +82,17 @@ sequenceDiagram
     RID-->>MW: Route Info
     deactivate RID
     
-    MW->>HV: Get Selected Holds
-    HV-->>MW: Selected Holds
-    
-    MW->>Hold: Generate UUIDs
-    MW->>RR: Save Route
+    MW->>MW: Generate UUIDs for Holds
+    MW->>RR: Save Route Model
     RR->>RR: Create JSON
     
     MW->>RIP: Add Info Overlay
     activate RIP
-    RIP->>RIP: Process Image
-    RIP-->>MW: Saved Image
+    RIP->>RIP: Process & Save Image
+    RIP-->>MW: Saved Image Path
     deactivate RIP
     
-    MW-->>User: Success Message
+    MW-->>User: Success Message / Error message
     
     deactivate RR
     deactivate HV
@@ -101,8 +101,8 @@ sequenceDiagram
     deactivate SW
     deactivate RC
     deactivate App
-
 ```
+### Project Structure
 ```
 climbing_route_creator/              # Główny katalog projektu
 │
@@ -170,15 +170,16 @@ climbing_route_creator/              # Główny katalog projektu
 The application allows users to:
 - Automatically detect climbing holds in photos using computer vision
 - Create routes by selecting holds and adding descriptions
-- Add directional arrows and comments between holds
+- Add connection lines (Bézier curves) between holds to represent climbing movements
 - Share routes with other climbers
 - Browse and discover routes created by the climbing community
 
 ## Technical Requirements
-- Python 3.8 or higher
+- Python 3.12 or higher
 - PyQt5 for the user interface
 - Roboflow API key for hold detection
-- Additional dependencies listed in requirements/base.txt
+- System operacyjny: Windows 10/11, Linux (Ubuntu 20.04+), macOS (10.15+)
+- Additional dependencies listed in pyproject.toml
 
 ## Installation
 
@@ -213,14 +214,51 @@ ROBOFLOW_API_KEY=your_api_key_here
 ```bash
 python src/main.py
 ```
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant SW as StartupWindow
+    participant DW as DetectionWorker
+    participant RC as RoboflowClient
+    participant H as HoldViewer
 
+    U->>SW: Przesyła zdjęcie
+    SW->>DW: Inicjuje detekcję
+    activate DW
+    DW->>RC: Wysyła zapytanie do API
+    RC-->>DW: Zwraca wykryte chwyty
+    DW->>H: Tworzy obiekty Hold
+    deactivate DW
+    H-->>U: Wyświetla chwyty
+
+    Note over U,H: Użytkownik może teraz<br/>zaznaczać chwyty
+```
 2. To create a new route:
    - Click "New Route" and select a photo of a climbing wall
    - Wait for automatic hold detection
    - Click on holds to create your route
    - Add descriptions and difficulty rating
    - Save and share your route
-
+```mermaid
+stateDiagram-v2
+    [*] --> StartupWindow
+    StartupWindow --> LoadingWindow: Upload Image
+    LoadingWindow --> MainWindow: Detection Complete
+    
+    state MainWindow {
+        [*] --> RouteEditing
+        RouteEditing --> HandSelection
+        RouteEditing --> FootSelection
+        HandSelection --> ConnectionEditing
+        FootSelection --> ConnectionEditing
+        ConnectionEditing --> SaveRoute
+        SaveRoute --> RouteInfoDialog
+        RouteInfoDialog --> SaveComplete
+        SaveComplete --> [*]
+    }
+    
+    MainWindow --> [*]: Close Application
+```
 ## Project Structure
 The project follows a modular architecture for maintainability and testability:
 - `src/api/`: Roboflow API integration
@@ -262,3 +300,9 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## Contact
 For questions or suggestions, please open an issue in the GitHub repository or contact the maintainers.
+
+![Python Version](https://img.shields.io/badge/python-3.12%2B-blue)
+![Python Version](https://img.shields.io/badge/PyQt5-blue)
+![License](https://img.shields.io/badge/license-MIT-green)
+![Build Status](https://img.shields.io/badge/build-passing-success)
+

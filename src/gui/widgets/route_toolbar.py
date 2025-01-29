@@ -47,10 +47,10 @@ class RouteToolbar(QWidget):
         # Edit Controls Group
         edit_group = self.create_button_group([
             ("Edit Curves", "curve.png", True),
-            ("Show Numbers", "numbers.png", True)
+            ("Instructions", "help.png", True)
         ])
         self.curve_edit_button = edit_group.findChild(QPushButton, "Edit Curves")
-        self.show_numbers = edit_group.findChild(QPushButton, "Show Numbers")
+        self.instructions_button = edit_group.findChild(QPushButton, "Instructions")
         layout.addWidget(edit_group)
 
         layout.addWidget(self.create_vertical_separator())
@@ -76,6 +76,14 @@ class RouteToolbar(QWidget):
         grade_layout.addWidget(grade_label)
         grade_layout.addWidget(self.grade_selector)
         layout.addWidget(grade_frame)
+
+        # Tooltips
+        self.hands_button.setToolTip("Zaznacz chwyty dla rąk")
+        self.feet_button.setToolTip("Zaznacz chwyty dla nóg")
+        self.curve_edit_button.setToolTip("Edytuj kształt połączeń")
+        self.new_route_button.setToolTip("Rozpocznij nową drogę")
+        self.save_route_button.setToolTip("Zapisz aktualną drogę")
+        self.instructions_button.setToolTip("Guide dla tworzenia dróg")
 
         # Add final stretch
         layout.addStretch()

@@ -1,80 +1,3 @@
-# from PyQt5.QtWidgets import QMainWindow, QWidget, QVBoxLayout
-# from PyQt5.QtCore import Qt
-# from .widgets.hold_viewer import HoldViewer
-# from .widgets.route_toolbar import RouteToolbar
-# from src.utils.logger import setup_logger
-# from src.utils.config import ProjectConfig
-# from src.core.movement_type import HoldType
-#
-# logger = setup_logger("gui/main_window", ProjectConfig.get_log_file("gui"))
-#
-#
-# class MainWindow(QMainWindow):
-#     """
-#     Main window of the Climbing Route Creator application.
-#     Integrates all GUI components and manages interactions between them.
-#     """
-#
-#     def __init__(self):
-#         super().__init__()
-#         self.setWindowTitle("Climbing Route Creator")
-#         self.resize(1024, 768)
-#         self.setup_ui()
-#         self.setAttribute(Qt.WA_DeleteOnClose)
-#
-#     def setup_ui(self):
-#         main_widget = QWidget()
-#         self.setCentralWidget(main_widget)
-#         layout = QVBoxLayout(main_widget)
-#         self.resize(1200, 1300)
-#         layout.setContentsMargins(10, 10, 10, 10)
-#
-#         self.route_toolbar = RouteToolbar(self)
-#         self.hold_viewer = HoldViewer(self)
-#
-#         layout.addWidget(self.route_toolbar)
-#         layout.addWidget(self.hold_viewer, 1)
-#
-#         self.initialize_state()
-#
-#     def initialize_state(self):
-#         self.route_toolbar.new_route_button.clicked.connect(self.start_new_route)
-#         self.route_toolbar.save_route_button.clicked.connect(self.save_current_route)
-#         self.route_toolbar.hands_button.clicked.connect(lambda: self._set_hold_type(HoldType.HAND))
-#         self.route_toolbar.feet_button.clicked.connect(lambda: self._set_hold_type(HoldType.FEET))
-#         self.route_toolbar.curve_edit_button.clicked.connect(
-#             lambda checked: self.hold_viewer._set_mode("curve_edit" if checked else "normal")
-#         )
-#
-#     def start_new_route(self):
-#         """Starts creating a new route."""
-#         logger.info("Starting new route creation")
-#         # Reset hold selection
-#         for hold in self.hold_viewer.holds:
-#             hold.is_hand_selected = False
-#             hold.is_foot_selected = False
-#             hold.hand_order = None
-#             hold.foot_order = None
-#             # hold.is_selected = False
-#             # hold.order_in_route = None
-#         self.hold_viewer.next_hand_order = 0
-#         self.hold_viewer.next_foot_order = 0
-#         self.hold_viewer.update()
-#         self.route_toolbar.enable_route_editing()
-#
-#     def save_current_route(self):
-#         """Saves the currently created route."""
-#         logger.info("Saving current route")
-#         # TODO: Implement route saving functionality
-#         # selected_holds = [h for h in self.hold_viewer.holds if h.is_selected]
-#         hand_holds = [h for h in self.hold_viewer.holds if h.is_hand_selected]
-#         foot_holds = [h for h in self.hold_viewer.holds if h.is_foot_selected]
-#         if hand_holds or foot_holds:
-#             logger.info(f"Route has {len(hand_holds)} hand holds and {len(foot_holds)} foot holds")
-#
-#     def _set_hold_type(self, hold_type: HoldType):
-#         self.hold_viewer.current_hold_type = hold_type
-#         logger.info(f"Set hold type to {hold_type.value}")
 from pathlib import Path
 
 from PyQt5.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QMessageBox, QDialog
@@ -111,12 +34,14 @@ class MainWindow(QMainWindow):
         self.route_repository = RouteRepository(ProjectConfig.ROUTES_DIR)
 
     def setup_ui(self):
+        """Sets up the main window UI"""
         main_widget = QWidget()
         self.setCentralWidget(main_widget)
         layout = QVBoxLayout(main_widget)
         self.resize(1200, 1300)
         layout.setContentsMargins(10, 10, 10, 10)
 
+        # Create widgets and add them to the layout
         self.route_toolbar = RouteToolbar(self)
         self.hold_viewer = HoldViewer(self)
 
@@ -126,10 +51,14 @@ class MainWindow(QMainWindow):
         self.initialize_state()
 
     def initialize_state(self):
+        """Initializes the state of the main window"""
         self.route_toolbar.new_route_button.clicked.connect(self.start_new_route)
         self.route_toolbar.save_route_button.clicked.connect(self.show_save_dialog)
         self.route_toolbar.hands_button.clicked.connect(lambda: self._set_hold_type(HoldType.HAND))
         self.route_toolbar.feet_button.clicked.connect(lambda: self._set_hold_type(HoldType.FEET))
+        self.route_toolbar.instructions_button.clicked.connect(
+            self.show_instructions
+        )
         self.route_toolbar.curve_edit_button.clicked.connect(
             lambda checked: self.hold_viewer._set_mode("curve_edit" if checked else "normal")
         )
@@ -163,7 +92,7 @@ class MainWindow(QMainWindow):
             # Check if an image is loaded
             if self.current_image_path is None:
                 raise ValueError("No image loaded")
-            image_path = Path(self.current_image_path) # if exists
+            image_path = Path(self.current_image_path)  # if exists
             if not image_path.exists():
                 raise FileNotFoundError(f"Image file not found: {image_path}")
 
@@ -241,6 +170,33 @@ class MainWindow(QMainWindow):
             logger.error(f"Error saving route: {str(e)}")
             logger.exception("Detailed error info:")
             QMessageBox.critical(self, "Error", f"Failed to save route:\n{str(e)}")
+
+    def show_instructions(self):
+        QMessageBox.information(self, "Instrukcja tworzenia drogi", """
+    Jak stworzyć i zapisać drogę wspinaczkową:
+
+    1. Wybór chwytów:
+       - Użyj przycisku 'Hands' aby zaznaczyć chwyty dla rąk
+       - Użyj przycisku 'Feet' aby zaznaczyć chwyty dla nóg
+       - Klikaj na chwyty w kolejności ich używania
+
+    2. Edycja połączeń:
+       - Użyj przycisku 'Edit Curves' aby edytować połączenia - currently disabled
+       - Kliknij na środek linii aby zmienić ją na krzywą
+       - Przeciągnij punkty kontrolne aby dostosować kształt
+
+    3. Zapisywanie drogi:
+       - Kliknij 'Save Route'
+       - Wypełnij informacje o drodze:
+         * Nazwa drogi
+         * Stopień trudności
+         * Autor
+         * Opis drogi
+
+    4. Dodatkowe opcje:
+       - 'New Route' - rozpocznij nową drogę
+       - Możesz usunąć chwyt klikając go ponownie
+            """)
 
     def load_route(self, route_id: str):
         """Load a route from the repository"""

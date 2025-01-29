@@ -4,7 +4,8 @@ from pathlib import Path
 try:
     from PyQt5.QtCore import pyqtSignal, Qt, QUrl
     from PyQt5.QtGui import QFont, QDragEnterEvent, QDropEvent
-    from PyQt5.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QLabel, QPushButton, QFileDialog, QMessageBox, QHBoxLayout
+    from PyQt5.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QLabel, QPushButton, QFileDialog, QMessageBox, \
+        QHBoxLayout
     from PyQt5.QtGui import QDesktopServices
 except ModuleNotFoundError as e:
     print("PyQt5 module is not installed. Please install it using 'pip install PyQt5' and try again.")
@@ -102,7 +103,8 @@ class StartupWindow(QMainWindow):
     def dragEnterEvent(self, event: QDragEnterEvent):
         """Handles drag enter events."""
         if event.mimeData().hasUrls():
-            self.drop_label.setStyleSheet("color: #2196F3; border: 2px solid #2196F3; background-color: #e3f2fd; padding: 20px; border-radius: 10px;")
+            self.drop_label.setStyleSheet(
+                "color: #2196F3; border: 2px solid #2196F3; background-color: #e3f2fd; padding: 20px; border-radius: 10px;")
             event.accept()
         else:
             event.ignore()
@@ -120,14 +122,14 @@ class StartupWindow(QMainWindow):
             self._process_uploaded_file(file_path)
 
     def _process_uploaded_file(self, file_path: str):
-        """Validates and processes the uploaded file."""
+        """Validates and processes the uploaded file. When successful, emits the image path. Then, loading panel is shown -> then main window is shown."""
         try:
             logger.info(f"Uploading image: {file_path}")
-            validated_path = ProjectConfig.validate_image_path(file_path)
+            validated_path = ProjectConfig.validate_image_path(file_path)  # Check if the file is an image
             destination = ProjectConfig.IMAGES_DIR / validated_path.name
             shutil.copy2(validated_path, destination)  # Copy the image to the project directory
             logger.info(f"Image uploaded successfully: {destination}")
-            self.image_uploaded.emit(str(destination))
+            self.image_uploaded.emit(str(destination))  # Emit the image path to the main window
         except ValueError as e:
             logger.error(f"Error uploading image: {str(e)}")
             QMessageBox.warning(self, "Error", str(e))
@@ -184,5 +186,3 @@ class StartupWindow(QMainWindow):
         """Opens the documentation in a web browser."""
         QMessageBox.information(self, "Documentation", "Opening the user documentation...")
         QDesktopServices.openUrl(QUrl("https://github.com/Floressek/ClimbingBetaBrakes"))
-
-

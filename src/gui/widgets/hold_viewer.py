@@ -44,7 +44,7 @@ class HoldViewer(QWidget):
         self.drag_point = None  # Point on the connection being dragged
         self.active_connection = None  # Connection being edited
 
-    def load_image(self, image_path: str) -> None:
+    def load_image(self, image_path: str) -> None: # Dynamic use means that we can use it for any image
         """Loads the climbing wall image"""
         try:
             self.wall_image = QPixmap(image_path)
@@ -182,7 +182,7 @@ class HoldViewer(QWidget):
             scaled_points.append(QPoint(int(x), int(y)))
 
         # Save the scaled points in the cache
-        self.scaled_points_cache[cache_key] = scaled_points
+        self.scaled_points_cache[cache_key] = scaled_points # Cache is used to avoid recalculating the same points. the cache_key is the hold id
         return scaled_points
 
     def draw_hold(self, painter: QPainter, hold: Hold) -> None:
@@ -203,11 +203,11 @@ class HoldViewer(QWidget):
         if hold.contour_points:
             points = self.get_scaled_points_for_hold(hold)
             path = QPainterPath()
-            if points:
+            if points: # If there are points, then draw the path
                 path.moveTo(points[0])
-                for point in points[1:]:
-                    path.lineTo(point)
-                path.lineTo(points[0])
+                for point in points[1:]: # in points[1:] we skip the first point because we already moved to it
+                    path.lineTo(point) # draw a line to the next point
+                path.lineTo(points[0]) # draw a line to the first point to close the path
 
             # Filler color for selected holds
             if hold.is_hand_selected:  # new color for hands

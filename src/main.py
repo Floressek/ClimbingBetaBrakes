@@ -242,7 +242,7 @@ class ClimbingApp:
         """Starts the application."""
         logger.info("Starting application...")
         self.startup_window.show()
-        return self.app.exec_()
+        return self.app.exec_() # app.exec_() is the main event loop of the application
 
     def handle_image_upload(self, image_path):
         """Handles the image upload event using worker thread."""

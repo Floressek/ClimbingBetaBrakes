@@ -43,6 +43,7 @@ class RouteImageProcessor:
                     Qt.KeepAspectRatio,
                     Qt.SmoothTransformation
                 )
+                # Divided by 2 to center the image
                 x = (hold_viewer.width() - scaled_image.width()) // 2
                 y = (hold_viewer.height() - scaled_image.height()) // 2
                 painter.drawPixmap(x, y, scaled_image)
